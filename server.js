@@ -1,29 +1,32 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient } = require("mongodb");
 
+// Importar las funciones necesarias de Firebase SDK
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, set } from 'firebase/database';
+
+// Configuración de Firebase (usa tus propios valores)
+const firebaseConfig = {
+  apiKey: "AIzaSyCjVwTpFJLtRyTHPawYAD8KP0F5ab8KwCM",  // Usa tu apiKey aquí
+  authDomain: "sistema-iot-c2ffd.firebaseapp.com",  // Usa tu authDomain aquí
+  projectId: "sistema-iot-c2ffd",  // Usa tu projectId aquí
+  storageBucket: "sistema-iot-c2ffd.appspot.com",  // Usa tu storageBucket aquí
+  messagingSenderId: "471483105768",  // Usa tu messagingSenderId aquí
+  appId: "1:471483105768:web:b19ec6c8d73f41683fa45d",  // Usa tu appId aquí
+  measurementId: "G-1DXNYXW",  // Usa tu measurementId aquí (si está disponible)
+};
+
+// Inicializar Firebase
+const appFirebase = initializeApp(firebaseConfig);
+const database = getDatabase(appFirebase);
+
+// Inicializar Express
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Configuración de CORS y JSON
 app.use(cors());
 app.use(express.json());
-
-// URL de conexión a MongoDB (ajustada con el nombre "Gersoniot")
-const uri = "mongodb+srv://iot:iot123@gerson.vlft9c5.mongodb.net/?appName=Gerson";  // Asegúrate de que este URL sea correcto
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-
-async function connect() {
-    try {
-        await client.connect();
-        console.log("🚀 Conectado a MongoDB");
-    } catch (err) {
-        console.error("Error al conectar con MongoDB: ", err);
-    }
-}
-
-// Conectarse a MongoDB
-connect();
 
 // ================= DATOS =================
 let datos = {
@@ -34,6 +37,18 @@ let datos = {
   ph: 0,
   fecha: new Date()
 };
+
+// ================= FUNCION PARA GUARDAR EN FIREBASE =================
+function guardarDatosEnFirebase(datos) {
+  const reference = ref(database, 'sensores');  // Crea una referencia en la base de datos
+  set(reference, datos)  // Aquí 'datos' es el objeto que quieres guardar
+    .then(() => {
+      console.log('Datos guardados con éxito en Firebase');
+    })
+    .catch((error) => {
+      console.error('Error al guardar los datos en Firebase:', error);
+    });
+}
 
 // ================= RUTA PARA RECIBIR DATOS DEL ESP32 =================
 app.post("/api/datos", (req, res) => {
@@ -59,18 +74,11 @@ app.post("/api/datos", (req, res) => {
     fecha: new Date()
   };
 
-  // Guardar en MongoDB
-  const database = client.db('iot_arroz');  // Base de datos que usamos en MongoDB
-  const collection = database.collection('sensores');  // Nombre de la colección
+  // Guardar en Firebase
+  guardarDatosEnFirebase(datos);
 
-  // Insertar datos en la base de datos
-  collection.insertOne(datos, (err, result) => {
-    if (err) {
-      return res.status(500).send("Error al guardar los datos");
-    }
-    console.log("📦 Datos guardados en MongoDB");
-    res.status(200).send("Datos guardados");
-  });
+  // Responder al cliente
+  res.status(200).send("Datos guardados en Firebase");
 });
 
 // ================= RUTA PARA OBTENER LOS DATOS =================
