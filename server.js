@@ -1,68 +1,62 @@
-const express = require("express");
-const cors = require("cors");
-const admin = require("firebase-admin");
-const path = require("path");
+import express from "express";
+import cors from "cors";
+import admin from "firebase-admin";
+import fs from "fs";
 
-// ===== FIREBASE ADMIN =====
+// ===== FIREBASE =====
+const serviceAccount = JSON.parse(
+  fs.readFileSync("./serviceAccountKey.json", "utf8")
+);
+
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
+  credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://sistema-iot-c2ffd-default-rtdb.firebaseio.com"
 });
 
 const db = admin.database();
 
-// ===== EXPRESS =====
+// ===== APP =====
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 🔥 ESTO ERA LO QUE FALTABA / ESTABA MAL
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // ⬅️ CLAVE
+app.use(express.urlencoded({ extended: true }));
 
-// ===== SERVIR HTML =====
-app.use(express.static(path.join(__dirname, "public")));
-
-// ===== ESP32 → GUARDA DATOS =====
+// ===== RUTA POST (ESP32 / ReqBin) =====
 app.post("/api/datos", async (req, res) => {
   try {
-    const { humedad, temp_suelo, temp_amb, luz, ph } = req.body;
+    const datos = req.body;
 
-    if (
-      humedad === undefined ||
-      temp_suelo === undefined ||
-      temp_amb === undefined ||
-      luz === undefined ||
-      ph === undefined
-    ) {
-      return res.status(400).json({ error: "Datos incompletos" });
+    // Validación mínima
+    if (!datos || Object.keys(datos).length === 0) {
+      return res.status(400).json({ error: "JSON vacío" });
     }
 
-    const datos = {
-      humedad,
-      temp_suelo,
-      temp_amb,
-      luz,
-      ph,
-      fecha: Date.now()
-    };
+    await db.ref("sensores").set({
+      ...datos,
+      timestamp: Date.now()
+    });
 
-    await db.ref("sensores").push(datos);
+    console.log("📥 Datos recibidos:", datos);
 
-    res.json({ ok: true });
-
-  } catch (e) {
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error:", err);
     res.status(500).json({ error: "Error servidor" });
   }
 });
 
-// ===== WEB → ÚLTIMO DATO =====
+// ===== RUTA GET (WEB) =====
 app.get("/api/datos", async (req, res) => {
-  const snap = await db.ref("sensores").limitToLast(1).once("value");
-  const data = snap.val();
-  const ultimo = data ? Object.values(data)[0] : {};
-  res.json(ultimo);
+  const snap = await db.ref("sensores").once("value");
+  res.json(snap.val() || {});
 });
 
-// ===== START =====
+// ===== WEB =====
+app.use(express.static("public"));
+
 app.listen(PORT, () => {
-  console.log("🚀 Server listo");
+  console.log(`🚀 Server activo en puerto ${PORT}`);
 });
