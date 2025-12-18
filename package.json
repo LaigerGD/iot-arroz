@@ -1,14 +1,18 @@
 {
   "name": "iot-arroz",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Servidor IoT con Node.js y Firebase",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "express": "^4.18.2",
+    "express": "^4.19.2",
     "cors": "^2.8.5",
-    "firebase-admin": "^12.0.0"
+    "firebase-admin": "^12.1.0"
   }
 }

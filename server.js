@@ -1,57 +1,48 @@
 import express from "express";
 import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
-
-import db from "./firebase.js"; // 👈 IMPORTA FIREBASE
+import db from "./firebase.js";
 
 const app = express();
+
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// para servir HTML
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "public")));
-
-// datos en memoria (para la web)
-let datos = {
-  humedad: "-",
-  temp_suelo: "-",
-  temp_amb: "-",
-  luz: "-",
-  ph: "-"
-};
-
-// ESP32 ENVÍA DATOS
+// Ruta para recibir datos del ESP32
 app.post("/datos", async (req, res) => {
-  datos = req.body;
-  console.log("📥 Datos recibidos:", datos);
-
   try {
-    await db.ref("historial").push({
-      ...datos,
-      timestamp: Date.now()
+    await db.ref("sensores").push({
+      ...req.body,
+      fecha: Date.now()
     });
-    console.log("🔥 Guardado en Firebase");
-  } catch (e) {
-    console.error("❌ Error Firebase:", e);
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Error guardando datos:", error);
+    res.status(500).json({ error: "Error al guardar datos" });
   }
-
-  res.json({ ok: true });
 });
 
-// HTML PIDE DATOS
-app.get("/datos", (req, res) => {
-  res.json(datos);
+// Ruta para enviar el último dato a la web
+app.get("/datos", async (req, res) => {
+  try {
+    const snapshot = await db
+      .ref("sensores")
+      .limitToLast(1)
+      .once("value");
+
+    const data = snapshot.val();
+    const ultimo = data ? Object.values(data)[0] : {};
+
+    res.json(ultimo);
+  } catch (error) {
+    console.error("Error leyendo datos:", error);
+    res.status(500).json({ error: "Error al leer datos" });
+  }
 });
 
-// raíz
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
+// Puerto (Render usa process.env.PORT)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("🚀 Servidor corriendo en puerto", PORT);
+  console.log("✅ Servidor listo en puerto", PORT);
 });
