@@ -1,19 +1,14 @@
-import db from "./firebase.js";
+import admin from "firebase-admin";
 
-async function pruebaFirebase() {
-  try {
-    await db.ref("prueba_render").set({
-      mensaje: "Render conectado con Firebase correctamente",
-      timestamp: Date.now()
-    });
+const serviceAccount = JSON.parse(
+  process.env.FIREBASE_SERVICE_ACCOUNT
+);
 
-    console.log("✅ ESCRITURA EXITOSA EN FIREBASE");
-    process.exit(0);
-  } catch (error) {
-    console.error("❌ ERROR ESCRIBIENDO EN FIREBASE");
-    console.error(error);
-    process.exit(1);
-  }
-}
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://sistema-iot-c2ffd-default-rtdb.firebaseio.com"
+});
 
-pruebaFirebase();
+const db = admin.database();
+
+export default db;
