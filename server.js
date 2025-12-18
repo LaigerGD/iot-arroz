@@ -3,12 +3,11 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// 🔥 Firebase
+// ===== Firebase =====
 import admin from "firebase-admin";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const serviceAccount = require("./serviceAccountKey.json");
-
 
 // Inicializar Firebase
 admin.initializeApp({
@@ -23,13 +22,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// para servir HTML
+// Para servir HTML
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "public")));
 
-// ===== variable para datos actuales =====
-let datos = {
+// Guardar último dato recibido (para la web)
+let ultimoDato = {
   humedad: "-",
   temp_suelo: "-",
   temp_amb: "-",
@@ -39,11 +38,14 @@ let datos = {
 
 // ===== ESP32 ENVÍA DATOS =====
 app.post("/datos", async (req, res) => {
-  datos = req.body;
-  console.log("📥 Datos recibidos:", datos);
-
   try {
-    // guardar en Firebase (historial)
+    const datos = req.body;
+    console.log("📥 Datos recibidos:", datos);
+
+    // Guardar último dato
+    ultimoDato = datos;
+
+    // 🔥 GUARDAR EN FIREBASE (HISTORIAL)
     await db.ref("historial").push({
       ...datos,
       timestamp: Date.now()
@@ -58,15 +60,15 @@ app.post("/datos", async (req, res) => {
 
 // ===== HTML PIDE DATOS =====
 app.get("/datos", (req, res) => {
-  res.json(datos);
+  res.json(ultimoDato);
 });
 
-// ===== raíz =====
+// ===== RAÍZ =====
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ===== servidor =====
+// ===== PUERTO =====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("🚀 Servidor corriendo en puerto", PORT);
