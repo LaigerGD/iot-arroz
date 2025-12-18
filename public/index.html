@@ -2,97 +2,79 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IoT Arroz</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { color: green; text-align: center; }
-    .card { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
-    canvas { width: 100%; height: 400px; }
+    body { font-family: Arial; padding: 20px; }
+    h1 { color: green; }
+    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    #graficoHumedad {
+      max-width: 600px;
+      width: 100%;
+      height: 300px;
+    }
   </style>
 </head>
 <body>
   <h1>🌱 Sistema IoT – Replante de Arroz</h1>
 
-  <div class="card">
-    <strong>💧 Humedad:</strong> <span id="humedad">Cargando...</span> %
-  </div>
-  <div class="card">
-    <strong>🌡️ Temp. Suelo:</strong> <span id="temp_suelo">Cargando...</span> °C
-  </div>
-  <div class="card">
-    <strong>🌤️ Temp. Ambiente:</strong> <span id="temp_amb">Cargando...</span> °C
-  </div>
-  <div class="card">
-    <strong>☀️ Luz:</strong> <span id="luz">Cargando...</span>
-  </div>
-  <div class="card">
-    <strong>🧪 pH:</strong> <span id="ph">Cargando...</span>
-  </div>
+  <div class="card">💧 Humedad: <span id="humedad">Cargando...</span> %</div>
+  <div class="card">🌡️ Temp. Suelo: <span id="temp_suelo">Cargando...</span> °C</div>
+  <div class="card">🌤️ Temp. Ambiente: <span id="temp_amb">Cargando...</span> °C</div>
+  <div class="card">☀️ Luz: <span id="luz">Cargando...</span></div>
+  <div class="card">🧪 pH: <span id="ph">Cargando...</span></div>
 
-  <h2>📊 Gráfico de Humedad</h2>
-  <canvas id="chart"></canvas>
+  <h2>Gráfico de Humedad</h2>
+  <div>
+    <canvas id="graficoHumedad" width="400" height="200"></canvas>
+  </div>
 
   <h2>🤖 Asistencia IA</h2>
   <p id="mensajeIA">Cargando...</p>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // Función para obtener los datos desde la API
-    async function obtenerDatos() {
-      try {
-        const response = await fetch('/api/datos');  // Endpoint del servidor
-        const datos = await response.json();
+    fetch('/api/datos')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('humedad').innerText = data.humedad;
+        document.getElementById('temp_suelo').innerText = data.temp_suelo;
+        document.getElementById('temp_amb').innerText = data.temp_amb;
+        document.getElementById('luz').innerText = data.luz;
+        document.getElementById('ph').innerText = data.ph;
 
-        // Actualizar los valores en la página
-        document.getElementById('humedad').textContent = datos.humedad;
-        document.getElementById('temp_suelo').textContent = datos.temp_suelo;
-        document.getElementById('temp_amb').textContent = datos.temp_amb;
-        document.getElementById('luz').textContent = datos.luz;
-        document.getElementById('ph').textContent = datos.ph;
-
-        // Actualizar mensaje IA
+        // Lógica IA
         let mensajeIA = "Condiciones normales";
-        if (datos.humedad < 40) mensajeIA = "⚠️ Humedad baja, posible falta de riego";
-        if (datos.temp_suelo > 35) mensajeIA = "⚠️ Temperatura del suelo elevada";
-        if (datos.ph < 5.5 || datos.ph > 6.5) mensajeIA = "⚠️ pH fuera del rango óptimo";
-        document.getElementById('mensajeIA').textContent = mensajeIA;
+        if (data.humedad < 40) mensajeIA = "⚠️ Humedad baja, posible falta de riego";
+        if (data.temp_suelo > 35) mensajeIA = "⚠️ Temperatura del suelo elevada";
+        if (data.ph < 5.5 || data.ph > 6.5) mensajeIA = "⚠️ pH fuera del rango óptimo";
+        document.getElementById('mensajeIA').innerText = mensajeIA;
 
-        // Actualizar gráfico
-        actualizarGrafico(datos.humedad);
-      } catch (error) {
-        console.error('Error al obtener los datos:', error);
-      }
-    }
-
-    // Función para actualizar el gráfico de humedad
-    function actualizarGrafico(humedad) {
-      const ctx = document.getElementById('chart').getContext('2d');
-      const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Humedad'],
-          datasets: [{
-            label: 'Humedad (%)',
-            data: [humedad],
-            borderColor: 'rgb(75, 192, 192)',
-            fill: false
-          }]
-        },
-        options: {
-          scales: {
-            y: {
-              min: 0,
-              max: 100
+        // Crear gráfico
+        const ctx = document.getElementById('graficoHumedad').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: ['1', '2', '3', '4', '5'],  // Puedes cambiar estas etiquetas
+            datasets: [{
+              label: 'Humedad (%)',
+              data: [data.humedad, data.humedad + 1, data.humedad - 2, data.humedad + 3, data.humedad - 1],
+              borderColor: 'rgba(75, 192, 192, 1)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              fill: true
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100
+              }
             }
           }
-        }
-      });
-    }
-
-    // Cargar los datos al cargar la página
-    obtenerDatos();
-    setInterval(obtenerDatos, 5000); // Actualizar cada 5 segundos
+        });
+      })
+      .catch(error => console.error('Error:', error));
   </script>
 </body>
 </html>
