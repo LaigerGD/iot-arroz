@@ -7,31 +7,27 @@
 <body>
   <h1>🌱 IoT Arroz</h1>
 
-  <pre id="datos">Cargando...</pre>
+  <div id="data">Esperando datos...</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  <script>
+    async function enviarPrueba() {
+      const res = await fetch("/api/datos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          humedad: 50,
+          temp_suelo: 28,
+          temp_amb: 30,
+          luz: 700,
+          ph: 6.5
+        })
+      });
 
-    const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "sistema-iot-c2ffd.firebaseapp.com",
-      databaseURL: "https://sistema-iot-c2ffd-default-rtdb.firebaseio.com",
-      projectId: "sistema-iot-c2ffd",
-      storageBucket: "sistema-iot-c2ffd.appspot.com",
-      messagingSenderId: "471483105768",
-      appId: "1:471483105768:web:b19ec6c8d73f41683fa45d"
-    };
+      const data = await res.json();
+      document.getElementById("data").innerText = JSON.stringify(data);
+    }
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const datosRef = ref(db, "datos/actual");
-
-    onValue(datosRef, snap => {
-      document.getElementById("datos").textContent =
-        JSON.stringify(snap.val(), null, 2);
-    });
+    enviarPrueba();
   </script>
 </body>
 </html>
