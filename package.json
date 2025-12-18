@@ -7,9 +7,10 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.17.1",
+    "chart.js": "^4.5.1",
     "cors": "^2.8.5",
-    "chart.js": "^4.5.1"
+    "express": "^4.17.1",
+    "mongodb": "^7.0.0"
   },
   "author": "Tu Nombre",
   "license": "MIT"
