@@ -1,26 +1,12 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient } = require("mongodb"); // Importar MongoClient
+const { MongoClient } = require("mongodb");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// MongoDB Connection URI
-const mongoUrl = "mongodb+srv://iot:iot123@gerson.anggqsy.mongodb.net/?appName=Gerson"; // Reemplaza con tu cadena de conexión
-
-// Conectar a la base de datos MongoDB
-const client = new MongoClient(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
-
-client.connect()
-  .then(() => {
-    console.log("✅ Conectado a MongoDB");
-  })
-  .catch((err) => {
-    console.error("❌ Error de conexión a MongoDB", err);
-  });
 
 // ================= DATOS =================
 let datos = {
@@ -31,6 +17,17 @@ let datos = {
   ph: 0,
   fecha: new Date()
 };
+
+// ================= CONEXIÓN A MONGODB ATLAS =================
+const uri = "mongodb+srv://<usuario>:<contraseña>@<cluster>.mongodb.net/test?retryWrites=true&w=majority";
+let db;
+
+MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(client => {
+    db = client.db("iot_arroz"); // Cambia "iot_arroz" por el nombre de tu base de datos
+    console.log("Conectado a MongoDB");
+  })
+  .catch(err => console.error("Error al conectar con MongoDB:", err));
 
 // ================= ESP32 ENVÍA =================
 app.post("/api/datos", (req, res) => {
@@ -46,7 +43,6 @@ app.post("/api/datos", (req, res) => {
     return res.status(400).send("Datos incompletos");
   }
 
-  // Actualizamos los datos en la variable
   datos = {
     humedad,
     temp_suelo,
@@ -57,21 +53,13 @@ app.post("/api/datos", (req, res) => {
   };
 
   console.log("📡 Datos recibidos:", datos);
+  
+  // Guardar los datos en MongoDB
+  db.collection("sensores").insertOne(datos)
+    .then(() => res.status(200).send("Datos guardados"))
+    .catch(err => res.status(500).send("Error al guardar los datos"));
 
-  // Insertar datos en MongoDB
-  const db = client.db("iot-arroz"); // Nombre de la base de datos
-  const collection = db.collection("sensores"); // Nombre de la colección
-
-  // Insertar los datos en la colección "sensores"
-  collection.insertOne(datos)
-    .then(result => {
-      console.log("📦 Datos insertados en MongoDB", result);
-      res.status(200).send("OK");
-    })
-    .catch(err => {
-      console.error("❌ Error al insertar datos en MongoDB", err);
-      res.status(500).send("Error al insertar datos");
-    });
+  res.status(200).send("OK");
 });
 
 // ================= WEB LEE =================
@@ -122,5 +110,5 @@ app.get("/", (req, res) => {
 
 // ================= START =================
 app.listen(PORT, () => {
-  console.log("🚀 Backend IoT Arroz activo");
+  console.log("🚀 Backend IoT Arroz activo en el puerto", PORT);
 });

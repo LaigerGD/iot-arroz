@@ -1,16 +1,17 @@
 {
   "name": "iot-arroz",
   "version": "1.0.0",
-  "description": "Sistema IoT agrícola para replante de arroz",
+  "description": "Sistema IoT para Replante de Arroz",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": ">=18"
-  },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
-  }
+    "express": "^4.17.1",
+    "cors": "^2.8.5",
+    "mongodb": "^3.6.10"
+  },
+  "devDependencies": {},
+  "author": "Tu Nombre",
+  "license": "MIT"
 }
