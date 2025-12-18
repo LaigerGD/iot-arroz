@@ -5,7 +5,10 @@ import { fileURLToPath } from "url";
 
 // 🔥 Firebase
 import admin from "firebase-admin";
-import serviceAccount from "./serviceAccountKey.json" assert { type: "json" };
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const serviceAccount = require("./serviceAccountKey.json");
+
 
 // Inicializar Firebase
 admin.initializeApp({
