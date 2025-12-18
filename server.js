@@ -1,55 +1,44 @@
 import express from "express";
 import cors from "cors";
-import admin from "firebase-admin";
-import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔐 Firebase Admin (Service Account)
-const serviceAccount = JSON.parse(
-  fs.readFileSync("./serviceAccountKey.json", "utf8")
-);
+// para servir HTML
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, "public")));
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://sistema-iot-c2ffd-default-rtdb.firebaseio.com"
+// variable para guardar últimos datos
+let datos = {
+  humedad: "-",
+  temp_suelo: "-",
+  temp_amb: "-",
+  luz: "-",
+  ph: "-"
+};
+
+// ESP32 ENVÍA DATOS AQUÍ
+app.post("/datos", (req, res) => {
+  datos = req.body;
+  console.log("📡 Datos recibidos:", datos);
+  res.json({ ok: true });
 });
 
-const db = admin.database();
-
-// 📥 ESP32 → Render
-app.post("/api/datos", async (req, res) => {
-  try {
-    const data = req.body;
-
-    if (!data || Object.keys(data).length === 0) {
-      return res.status(400).json({ error: "JSON vacío" });
-    }
-
-    const timestamp = Date.now();
-
-    await db.ref("datos/actual").set(data);
-    await db.ref(`datos/historial/${timestamp}`).set(data);
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Firebase error" });
-  }
+// HTML pide datos
+app.get("/datos", (req, res) => {
+  res.json(datos);
 });
 
-// 📤 Web / pruebas
-app.get("/api/datos", async (req, res) => {
-  const snap = await db.ref("datos/actual").once("value");
-  res.json(snap.val());
+// raíz
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-
-// 🌐 Web
-app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log("Servidor activo en puerto", PORT)
-);
+app.listen(PORT, () => {
+  console.log("🔥 Servidor activo en puerto", PORT);
+});

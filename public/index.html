@@ -7,27 +7,25 @@
 <body>
   <h1>🌱 IoT Arroz</h1>
 
-  <div id="data">Esperando datos...</div>
+  <p>Humedad: <span id="humedad">-</span></p>
+  <p>Temp Suelo: <span id="temp_suelo">-</span></p>
+  <p>Temp Ambiente: <span id="temp_amb">-</span></p>
+  <p>Luz: <span id="luz">-</span></p>
+  <p>pH: <span id="ph">-</span></p>
 
   <script>
-    async function enviarPrueba() {
-      const res = await fetch("/api/datos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          humedad: 50,
-          temp_suelo: 28,
-          temp_amb: 30,
-          luz: 700,
-          ph: 6.5
-        })
-      });
+    async function cargarDatos() {
+      const res = await fetch("/datos");
+      const d = await res.json();
 
-      const data = await res.json();
-      document.getElementById("data").innerText = JSON.stringify(data);
+      document.getElementById("humedad").innerText = d.humedad;
+      document.getElementById("temp_suelo").innerText = d.temp_suelo;
+      document.getElementById("temp_amb").innerText = d.temp_amb;
+      document.getElementById("luz").innerText = d.luz;
+      document.getElementById("ph").innerText = d.ph;
     }
 
-    enviarPrueba();
+    setInterval(cargarDatos, 2000);
   </script>
 </body>
 </html>
