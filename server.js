@@ -3,7 +3,11 @@ import cors from "cors";
 import admin from "firebase-admin";
 import fs from "fs";
 
-// ===== FIREBASE =====
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// 🔐 Firebase Admin (Service Account)
 const serviceAccount = JSON.parse(
   fs.readFileSync("./serviceAccountKey.json", "utf8")
 );
@@ -15,48 +19,37 @@ admin.initializeApp({
 
 const db = admin.database();
 
-// ===== APP =====
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// 🔥 ESTO ERA LO QUE FALTABA / ESTABA MAL
-app.use(cors());
-app.use(express.json()); // ⬅️ CLAVE
-app.use(express.urlencoded({ extended: true }));
-
-// ===== RUTA POST (ESP32 / ReqBin) =====
+// 📥 ESP32 → Render
 app.post("/api/datos", async (req, res) => {
   try {
-    const datos = req.body;
+    const data = req.body;
 
-    // Validación mínima
-    if (!datos || Object.keys(datos).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
       return res.status(400).json({ error: "JSON vacío" });
     }
 
-    await db.ref("sensores").set({
-      ...datos,
-      timestamp: Date.now()
-    });
+    const timestamp = Date.now();
 
-    console.log("📥 Datos recibidos:", datos);
+    await db.ref("datos/actual").set(data);
+    await db.ref(`datos/historial/${timestamp}`).set(data);
 
-    res.status(200).json({ ok: true });
+    res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).json({ error: "Error servidor" });
+    console.error(err);
+    res.status(500).json({ error: "Firebase error" });
   }
 });
 
-// ===== RUTA GET (WEB) =====
+// 📤 Web / pruebas
 app.get("/api/datos", async (req, res) => {
-  const snap = await db.ref("sensores").once("value");
-  res.json(snap.val() || {});
+  const snap = await db.ref("datos/actual").once("value");
+  res.json(snap.val());
 });
 
-// ===== WEB =====
+// 🌐 Web
 app.use(express.static("public"));
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server activo en puerto ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log("Servidor activo en puerto", PORT)
+);

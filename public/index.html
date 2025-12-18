@@ -3,63 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <title>IoT Arroz</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 8px; }
-    canvas { max-width: 250px; height: 150px; }
-  </style>
 </head>
 <body>
+  <h1>🌱 IoT Arroz</h1>
 
-<h2>🌱 IoT Arroz</h2>
+  <pre id="datos">Cargando...</pre>
 
-<div class="card">Humedad: <span id="humedad">-</span></div>
-<div class="card">Temp Suelo: <span id="temp_suelo">-</span></div>
-<div class="card">Temp Ambiente: <span id="temp_amb">-</span></div>
-<div class="card">Luz: <span id="luz">-</span></div>
-<div class="card">pH: <span id="ph">-</span></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-<canvas id="grafico"></canvas>
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "sistema-iot-c2ffd.firebaseapp.com",
+      databaseURL: "https://sistema-iot-c2ffd-default-rtdb.firebaseio.com",
+      projectId: "sistema-iot-c2ffd",
+      storageBucket: "sistema-iot-c2ffd.appspot.com",
+      messagingSenderId: "471483105768",
+      appId: "1:471483105768:web:b19ec6c8d73f41683fa45d"
+    };
 
-<script>
-let chart;
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-async function cargarDatos() {
-  const res = await fetch("/api/datos");
-  const d = await res.json();
+    const datosRef = ref(db, "datos/actual");
 
-  document.getElementById("humedad").innerText = d.humedad;
-  document.getElementById("temp_suelo").innerText = d.temp_suelo;
-  document.getElementById("temp_amb").innerText = d.temp_amb;
-  document.getElementById("luz").innerText = d.luz;
-  document.getElementById("ph").innerText = d.ph;
-
-  if (!chart) {
-    const ctx = document.getElementById("grafico");
-    chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: ["Ahora"],
-        datasets: [{
-          label: "Humedad",
-          data: [d.humedad],
-        }]
-      }
+    onValue(datosRef, snap => {
+      document.getElementById("datos").textContent =
+        JSON.stringify(snap.val(), null, 2);
     });
-  } else {
-    chart.data.labels.push("");
-    chart.data.datasets[0].data.push(d.humedad);
-    if (chart.data.labels.length > 10) {
-      chart.data.labels.shift();
-      chart.data.datasets[0].data.shift();
-    }
-    chart.update();
-  }
-}
-
-setInterval(cargarDatos, 5000);
-</script>
-
+  </script>
 </body>
 </html>
