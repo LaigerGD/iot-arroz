@@ -38,13 +38,13 @@
   <p id="mensajeIA">Cargando...</p>
 
   <script>
-    // Función para obtener los datos de la API
+    // Función para obtener los datos desde la API
     async function obtenerDatos() {
       try {
-        const response = await fetch('/api/datos');
+        const response = await fetch('/api/datos');  // Endpoint del servidor
         const datos = await response.json();
 
-        // Actualizar los datos en la página
+        // Actualizar los valores en la página
         document.getElementById('humedad').textContent = datos.humedad;
         document.getElementById('temp_suelo').textContent = datos.temp_suelo;
         document.getElementById('temp_amb').textContent = datos.temp_amb;
@@ -75,7 +75,7 @@
           datasets: [{
             label: 'Humedad (%)',
             data: [humedad],
-            borderColor: 'rgba(75, 192, 192, 1)',
+            borderColor: 'rgb(75, 192, 192)',
             fill: false
           }]
         },
@@ -90,9 +90,9 @@
       });
     }
 
-    // Obtener los datos al cargar la página
+    // Cargar los datos al cargar la página
     obtenerDatos();
-    setInterval(obtenerDatos, 5000); // Actualizar los datos cada 5 segundos
+    setInterval(obtenerDatos, 5000); // Actualizar cada 5 segundos
   </script>
 </body>
 </html>

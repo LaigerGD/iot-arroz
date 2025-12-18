@@ -1,48 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ================= CONEXIÓN A MONGO DB =================
-const uri = "mongodb+srv://iot:<iot123>@gerson.anggqsy.mongodb.net/?appName=Gerson";
-let db;
-
-// Conexión a la base de datos
-MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(client => {
-    db = client.db("iot_arroz");  // Cambia "iot_arroz" por el nombre de tu base de datos
-    console.log("Conectado a MongoDB");
-  })
-  .catch(err => console.error("Error al conectar con MongoDB:", err));
-
-// ================= CONFIGURACIONES =================
 app.use(cors());
 app.use(express.json());
 
-// ================= RUTA PARA OBTENER DATOS =================
-app.post("/api/datos", (req, res) => {
-  const { humedad, temp_suelo, temp_amb, luz, ph } = req.body;
-
-  if (!humedad || !temp_suelo || !temp_amb || !luz || !ph) {
-    return res.status(400).send("Faltan datos");
-  }
-
-  const datos = {
-    humedad,
-    temp_suelo,
-    temp_amb,
-    luz,
-    ph,
-    fecha: new Date()
+// ================= SIMULANDO LOS DATOS DE LOS SENSORES =================
+function generarDatos() {
+  return {
+    humedad: Math.floor(Math.random() * (80 - 50 + 1)) + 50,     // Genera valores entre 50 y 80
+    temp_suelo: Math.floor(Math.random() * (35 - 20 + 1)) + 20,  // Genera valores entre 20°C y 35°C
+    temp_amb: Math.floor(Math.random() * (40 - 25 + 1)) + 25,    // Genera valores entre 25°C y 40°C
+    luz: Math.floor(Math.random() * (1000 - 100 + 1)) + 100,     // Genera valores entre 100 y 1000
+    ph: (Math.random() * (8 - 5) + 5).toFixed(2)                  // Genera valores entre 5.0 y 8.0 con dos decimales
   };
+}
 
-  // Guardar en la base de datos
-  db.collection("sensores").insertOne(datos)
-    .then(() => res.status(200).send("Datos guardados"))
-    .catch(err => res.status(500).send("Error al guardar los datos"));
+// ================= ENDPOINT PARA OBTENER DATOS =================
+app.get("/api/datos", (req, res) => {
+  const datos = generarDatos();  // Generamos los datos aleatorios
+  res.json(datos);               // Enviamos los datos como respuesta
 });
 
 // ================= SERVIR EL ARCHIVO HTML =================
