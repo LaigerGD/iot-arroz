@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoT Arroz</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: green; text-align: center; }
+    .card { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    canvas { width: 100%; height: 400px; }
+  </style>
+</head>
+<body>
+  <h1>🌱 Sistema IoT – Replante de Arroz</h1>
+
+  <div class="card">
+    <strong>💧 Humedad:</strong> <span id="humedad">Cargando...</span> %
+  </div>
+  <div class="card">
+    <strong>🌡️ Temp. Suelo:</strong> <span id="temp_suelo">Cargando...</span> °C
+  </div>
+  <div class="card">
+    <strong>🌤️ Temp. Ambiente:</strong> <span id="temp_amb">Cargando...</span> °C
+  </div>
+  <div class="card">
+    <strong>☀️ Luz:</strong> <span id="luz">Cargando...</span>
+  </div>
+  <div class="card">
+    <strong>🧪 pH:</strong> <span id="ph">Cargando...</span>
+  </div>
+
+  <h2>📊 Gráfico de Humedad</h2>
+  <canvas id="chart"></canvas>
+
+  <h2>🤖 Asistencia IA</h2>
+  <p id="mensajeIA">Cargando...</p>
+
+  <script>
+    // Función para obtener los datos de la API
+    async function obtenerDatos() {
+      try {
+        const response = await fetch('/api/datos');
+        const datos = await response.json();
+
+        // Actualizar los datos en la página
+        document.getElementById('humedad').textContent = datos.humedad;
+        document.getElementById('temp_suelo').textContent = datos.temp_suelo;
+        document.getElementById('temp_amb').textContent = datos.temp_amb;
+        document.getElementById('luz').textContent = datos.luz;
+        document.getElementById('ph').textContent = datos.ph;
+
+        // Actualizar mensaje IA
+        let mensajeIA = "Condiciones normales";
+        if (datos.humedad < 40) mensajeIA = "⚠️ Humedad baja, posible falta de riego";
+        if (datos.temp_suelo > 35) mensajeIA = "⚠️ Temperatura del suelo elevada";
+        if (datos.ph < 5.5 || datos.ph > 6.5) mensajeIA = "⚠️ pH fuera del rango óptimo";
+        document.getElementById('mensajeIA').textContent = mensajeIA;
+
+        // Actualizar gráfico
+        actualizarGrafico(datos.humedad);
+      } catch (error) {
+        console.error('Error al obtener los datos:', error);
+      }
+    }
+
+    // Función para actualizar el gráfico de humedad
+    function actualizarGrafico(humedad) {
+      const ctx = document.getElementById('chart').getContext('2d');
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Humedad'],
+          datasets: [{
+            label: 'Humedad (%)',
+            data: [humedad],
+            borderColor: 'rgba(75, 192, 192, 1)',
+            fill: false
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              min: 0,
+              max: 100
+            }
+          }
+        }
+      });
+    }
+
+    // Obtener los datos al cargar la página
+    obtenerDatos();
+    setInterval(obtenerDatos, 5000); // Actualizar los datos cada 5 segundos
+  </script>
+</body>
+</html>
