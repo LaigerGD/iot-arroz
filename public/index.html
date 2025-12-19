@@ -1,129 +1,208 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema IoT Agrícola – Replante de Arroz</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Librería para gráficos -->
-  <link rel="stylesheet" href="styles.css"> <!-- Puedes agregar tus propios estilos -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema IoT Agrícola - Replante de Arroz</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #e3f2fd;
+        }
+        .container {
+            margin-top: 30px;
+        }
+        .card-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .table {
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Sistema IoT Agrícola – Replante de Arroz</h1>
-  </header>
-  
-  <div class="container">
-    <div class="data-box">
-      <h3>Humedad (%)</h3>
-      <p id="humedad">-- %</p>
+
+    <div class="container">
+        <h2 class="text-center text-primary">Sistema IoT Agrícola – Replante de Arroz</h2>
+
+        <!-- Gráficos -->
+        <div class="row">
+            <div class="col-md-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Humedad (%)</h5>
+                        <canvas id="humidityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Temp. Suelo (°C)</h5>
+                        <canvas id="soilTempChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Temp. Ambiente (°C)</h5>
+                        <canvas id="ambientTempChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Luz (lux)</h5>
+                        <canvas id="lightChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos Recibidos -->
+        <div class="alert alert-success" id="statusAlert" role="alert" style="display:none;">
+            Conexión exitosa. Datos recibidos.
+        </div>
+
+        <!-- Tabla de Datos -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Humedad (%)</th>
+                    <th>Temp. Suelo (°C)</th>
+                    <th>Temp. Ambiente (°C)</th>
+                    <th>Luz (lux)</th>
+                    <th>pH</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+                <tr>
+                    <td>-- %</td>
+                    <td>-- °C</td>
+                    <td>-- °C</td>
+                    <td>-- lux</td>
+                    <td>--</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
-    <div class="data-box">
-      <h3>Temp. Suelo (°C)</h3>
-      <p id="temp_suelo">-- °C</p>
-    </div>
-    <div class="data-box">
-      <h3>Temp. Ambiente (°C)</h3>
-      <p id="temp_ambiente">-- °C</p>
-    </div>
-    <div class="data-box">
-      <h3>Luz (lux)</h3>
-      <p id="luz">-- lux</p>
-    </div>
-    <div class="data-box">
-      <h3>pH</h3>
-      <p id="ph">--</p>
-    </div>
-  </div>
 
-  <!-- Gráficos con Chart.js -->
-  <div class="chart-container">
-    <canvas id="humedadChart"></canvas>
-    <canvas id="tempSueloChart"></canvas>
-  </div>
+    <script>
+        const humidityData = [];
+        const soilTempData = [];
+        const ambientTempData = [];
+        const lightData = [];
+        const phData = [];
 
-  <footer>
-    <p>IoT Arroz © 2025</p>
-  </footer>
+        function updateData(data) {
+            // Actualizar tabla
+            document.getElementById("dataTableBody").innerHTML = `
+                <tr>
+                    <td>${data.humedad}%</td>
+                    <td>${data.temp_suelo}°C</td>
+                    <td>${data.temp_ambiente}°C</td>
+                    <td>${data.luz} lux</td>
+                    <td>${data.ph}</td>
+                </tr>
+            `;
 
-  <script>
-    // Función para obtener los datos del servidor
-    async function fetchData() {
-      try {
-        const response = await fetch('https://iot-arroz.onrender.com/api/data'); // URL de tu servidor
-        const data = await response.json();
+            // Actualizar gráficos
+            humidityData.push(data.humedad);
+            soilTempData.push(data.temp_suelo);
+            ambientTempData.push(data.temp_ambiente);
+            lightData.push(data.luz);
+            phData.push(data.ph);
 
-        // Actualizar los valores de la página con los datos del servidor
-        document.getElementById('humedad').innerText = `${data.humedad}%`;
-        document.getElementById('temp_suelo').innerText = `${data.temp_suelo} °C`;
-        document.getElementById('temp_ambiente').innerText = `${data.temp_ambiente} °C`;
-        document.getElementById('luz').innerText = `${data.luz} lux`;
-        document.getElementById('ph').innerText = `${data.ph}`;
-
-        // Llamar a la función de actualización de gráficos
-        updateCharts(data);
-      } catch (error) {
-        console.error('Error al obtener los datos:', error);
-      }
-    }
-
-    // Función para actualizar los gráficos
-    function updateCharts(data) {
-      humedadChart.data.datasets[0].data.push(data.humedad); // Agregar dato al gráfico de humedad
-      tempSueloChart.data.datasets[0].data.push(data.temp_suelo); // Agregar dato al gráfico de temperatura del suelo
-      humedadChart.update();
-      tempSueloChart.update();
-    }
-
-    // Llamar la función cada 5 segundos
-    setInterval(fetchData, 5000);
-
-    // Inicializar los gráficos con Chart.js
-    const ctxHumedad = document.getElementById('humedadChart').getContext('2d');
-    const ctxTempSuelo = document.getElementById('tempSueloChart').getContext('2d');
-
-    const humedadChart = new Chart(ctxHumedad, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Humedad (%)',
-          data: [],
-          borderColor: 'rgb(0, 123, 255)',
-          fill: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            type: 'linear',
-            position: 'bottom'
-          }
+            updateCharts();
         }
-      }
-    });
 
-    const tempSueloChart = new Chart(ctxTempSuelo, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Temperatura del Suelo (°C)',
-          data: [],
-          borderColor: 'rgb(255, 99, 132)',
-          fill: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            type: 'linear',
-            position: 'bottom'
-          }
+        function updateCharts() {
+            humidityChart.update();
+            soilTempChart.update();
+            ambientTempChart.update();
+            lightChart.update();
         }
-      }
-    });
-  </script>
+
+        const ctxHumidity = document.getElementById('humidityChart').getContext('2d');
+        const ctxSoilTemp = document.getElementById('soilTempChart').getContext('2d');
+        const ctxAmbientTemp = document.getElementById('ambientTempChart').getContext('2d');
+        const ctxLight = document.getElementById('lightChart').getContext('2d');
+
+        const humidityChart = new Chart(ctxHumidity, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humedad (%)',
+                    data: humidityData,
+                    borderColor: 'teal',
+                    fill: false
+                }]
+            }
+        });
+
+        const soilTempChart = new Chart(ctxSoilTemp, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temp. Suelo (°C)',
+                    data: soilTempData,
+                    borderColor: 'pink',
+                    fill: false
+                }]
+            }
+        });
+
+        const ambientTempChart = new Chart(ctxAmbientTemp, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temp. Ambiente (°C)',
+                    data: ambientTempData,
+                    borderColor: 'green',
+                    fill: false
+                }]
+            }
+        });
+
+        const lightChart = new Chart(ctxLight, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Luz (lux)',
+                    data: lightData,
+                    borderColor: 'orange',
+                    fill: false
+                }]
+            }
+        });
+
+        // Función que recibe los datos del servidor
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                updateData(data);
+                document.getElementById("statusAlert").style.display = 'block';
+            } catch (error) {
+                console.error("Error al recibir los datos: ", error);
+            }
+        }
+
+        // Actualizar datos cada 5 segundos
+        setInterval(fetchData, 5000);
+    </script>
+
 </body>
 </html>
