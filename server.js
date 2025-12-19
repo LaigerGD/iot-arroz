@@ -1,75 +1,67 @@
-// Importar las dependencias
 const express = require('express');
-const bodyParser = require('body-parser');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
-const cors = require('cors');
+const bodyParser = require('body-parser');
 
-// Configurar el servidor Express
+// Configuración de Express
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(bodyParser.json()); // Para analizar JSON en las solicitudes
 
-// Configurar CORS para permitir solicitudes desde cualquier origen
-app.use(cors());
+// ID de tu Google Sheet (asegúrate de que este sea correcto)
+const SHEET_ID = '19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y';
 
-// Middleware para manejar el cuerpo de las solicitudes como JSON
-app.use(bodyParser.json());
+// Leer las credenciales desde la variable de entorno
+const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 
-// Cargar las credenciales del servicio de Google Sheets
-const doc = new GoogleSpreadsheet('19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y'); // ID de la hoja de Google Sheets
+// Inicializar la hoja de Google Spreadsheet
+const doc = new GoogleSpreadsheet(SHEET_ID);
 
-// Cargar las credenciales desde el archivo JSON
-const credentials = require('./credentials.json'); // Ruta del archivo de credenciales del servicio de Google
-
-// Función para conectar a Google Sheets
-async function connectToGoogleSheets() {
+// Conectar con Google Sheets usando las credenciales
+async function accessSheet() {
   try {
-    await doc.useServiceAccountAuth(credentials); // Autenticarse con Google
-    await doc.loadInfo(); // Cargar la información de la hoja de cálculo
-    console.log('Conexión exitosa con Google Sheets');
+    console.log("Accediendo a la hoja de Google...");
+    await doc.useServiceAccountAuth(credentials); // Usar las credenciales del entorno
+    await doc.loadInfo(); // Cargar la información de la hoja
+    console.log("¡Hoja de Google accedida correctamente!");
   } catch (error) {
-    console.error('Error al conectar con Google Sheets:', error);
-    throw new Error('No se pudo conectar a Google Sheets');
+    console.error("Error al acceder a la hoja de Google:", error);
   }
 }
 
-// Endpoint para recibir los datos del ESP32
+// Accede a la hoja cuando el servidor inicie
+accessSheet();
+
+// Ruta para visualizar los datos en la página
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
+
+// Ruta para recibir los datos del ESP32 y guardarlos en Google Sheets
 app.post('/api/data', async (req, res) => {
+  const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
+
   try {
-    // Obtener los datos del cuerpo de la solicitud
-    const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
-
-    // Verificar si los datos son válidos
-    if (isNaN(humedad) || isNaN(temp_suelo) || isNaN(temp_ambiente) || isNaN(luz) || isNaN(ph)) {
-      return res.status(400).send('Datos inválidos');
-    }
-
-    // Guardar los datos en la hoja de Google Sheets
-    const sheet = doc.sheetsByIndex[0]; // Asegúrate de que la hoja correcta está seleccionada
+    // Agregar los datos a Google Sheets
+    const sheet = doc.sheetsByIndex[0]; // Obtener la primera hoja de trabajo
     await sheet.addRow({
-      Fecha: new Date().toLocaleString(), // Registrar la fecha y hora
+      Fecha: new Date().toLocaleString(), // Fecha actual
       Humedad: humedad,
-      Temp_Suelo: temp_suelo,
-      Temp_Ambiente: temp_ambiente,
+      'Temp Suelo (°C)': temp_suelo,
+      'Temp Ambiente (°C)': temp_ambiente,
       Luz: luz,
       pH: ph,
     });
 
-    console.log(`Datos guardados en Google Sheets: ${JSON.stringify(req.body)}`);
-
-    // Responder que los datos fueron guardados correctamente
+    // Enviar respuesta a ESP32
     res.status(200).send('Datos guardados en Google Sheets');
+    console.log(`Datos guardados: ${req.body}`);
   } catch (error) {
     console.error('Error al guardar los datos:', error);
     res.status(500).send('Error al guardar los datos');
   }
 });
 
-// Iniciar el servidor y conectar a Google Sheets
-app.listen(port, async () => {
-  try {
-    await connectToGoogleSheets();
-    console.log(`Servidor escuchando en http://localhost:${port}`);
-  } catch (error) {
-    console.error('No se pudo iniciar el servidor:', error);
-  }
+// Iniciar el servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
