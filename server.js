@@ -24,7 +24,7 @@ app.get('/api/data', async (req, res) => {
             luz: 750, // Simulado
             ph: 6.4 // Simulado
         };
-        
+
         // Llamamos a la función para guardar los datos en Google Sheets
         await saveToSheet(data);
 
