@@ -1,29 +1,33 @@
-// Importar las dependencias
+// Importar las dependencias necesarias
 const express = require('express');
 const bodyParser = require('body-parser');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const cors = require('cors');
 
-// Configurar el servidor Express
+// Configuración del servidor Express
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Configurar CORS para permitir solicitudes desde cualquier origen
+// Configuración de CORS para permitir solicitudes desde cualquier origen
 app.use(cors());
 
-// Middleware para manejar el cuerpo de las solicitudes como JSON
+// Middleware para procesar el cuerpo de las solicitudes como JSON
 app.use(bodyParser.json());
 
-// Cargar las credenciales del servicio de Google Sheets
-const doc = new GoogleSpreadsheet('19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y'); // ID de la hoja de Google Sheets
+// ID de la hoja de cálculo de Google Sheets
+const SPREADSHEET_ID = '19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y';
 
-// Cargar las credenciales desde el archivo JSON
-const credentials = require('./credentials.json'); // Ruta del archivo de credenciales del servicio de Google
+// Cargar las credenciales desde la variable de entorno
+const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 
-// Función para conectar a Google Sheets
+// Inicializar Google Spreadsheet
+const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+
+// Conectar a Google Sheets
 async function connectToGoogleSheets() {
   try {
-    await doc.useServiceAccountAuth(credentials); // Autenticarse con Google
+    // Autenticarse usando las credenciales de la variable de entorno
+    await doc.useServiceAccountAuth(credentials); 
     await doc.loadInfo(); // Cargar la información de la hoja de cálculo
     console.log('Conexión exitosa con Google Sheets');
   } catch (error) {
@@ -32,7 +36,7 @@ async function connectToGoogleSheets() {
   }
 }
 
-// Endpoint para recibir los datos del ESP32
+// Endpoint para recibir datos desde el ESP32
 app.post('/api/data', async (req, res) => {
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -44,7 +48,7 @@ app.post('/api/data', async (req, res) => {
     }
 
     // Guardar los datos en la hoja de Google Sheets
-    const sheet = doc.sheetsByIndex[0]; // Asegúrate de que la hoja correcta está seleccionada
+    const sheet = doc.sheetsByIndex[0]; // Asegúrate de que estás usando la hoja correcta
     await sheet.addRow({
       Fecha: new Date().toLocaleString(), // Registrar la fecha y hora
       Humedad: humedad,
