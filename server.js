@@ -5,66 +5,56 @@ import { google } from "googleapis";
 const app = express();
 app.use(bodyParser.json());
 
-/* =========================
-   CONFIG GOOGLE SHEETS
-========================= */
+const PORT = process.env.PORT || 3000;
 
-// 1️⃣ CREDENCIALES DESDE VARIABLE DE ENTORNO
-const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+// 🔴 VALIDACIÓN CRÍTICA
+if (!process.env.GOOGLE_CREDENTIALS) {
+  console.error("❌ GOOGLE_CREDENTIALS NO DEFINIDA");
+  process.exit(1);
+}
 
-// 2️⃣ AUTENTICACIÓN
-const auth = new google.auth.JWT(
-  credentials.client_email,
-  null,
-  credentials.private_key,
-  ["https://www.googleapis.com/auth/spreadsheets"]
-);
+// Google Auth
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
 
 const sheets = google.sheets({ version: "v4", auth });
 
-// 3️⃣ ID DE TU SHEET (solo el ID)
-const SPREADSHEET_ID = "19TOTCF0SkEN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y";
-
-// 4️⃣ NOMBRE DE LA HOJA
+const SPREADSHEET_ID = "TU_ID_DE_SHEET";
 const SHEET_NAME = "Hoja 1";
 
-/* =========================
-   ENDPOINT PARA DATOS IoT
-========================= */
+app.post("/data", async (req, res) => {
+  const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
 
-app.post("/datos", async (req, res) => {
+  console.log("📥 Datos recibidos:", req.body);
+
   try {
-    const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
-
-    console.log("📡 Datos recibidos:", req.body);
-
-    // FECHA Y HORA ACTUAL
-    const fecha = new Date().toLocaleString("es-MX");
-
-    // 5️⃣ AGREGAR FILA (append → NO BORRA NADA)
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A:F`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[fecha, humedad, temp_suelo, temp_ambiente, luz, ph]],
-      },
+        values: [[
+          new Date().toLocaleString(),
+          humedad,
+          temp_suelo,
+          temp_ambiente,
+          luz,
+          ph
+        ]]
+      }
     });
 
-    console.log("✅ Datos guardados en Google Sheets");
+    console.log("✅ Guardado en Google Sheets");
+    res.json({ ok: true });
 
-    res.status(200).json({ ok: true });
   } catch (error) {
     console.error("❌ Error al guardar:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-/* =========================
-   SERVIDOR
-========================= */
-
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor activo en puerto ${PORT}`);
 });
