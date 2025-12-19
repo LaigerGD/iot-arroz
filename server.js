@@ -1,4 +1,4 @@
-// Importar dependencias necesarias
+// Importar las dependencias necesarias
 const express = require('express');
 const bodyParser = require('body-parser');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
@@ -28,6 +28,7 @@ const SPREADSHEET_ID = '19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y';
 
 // Cargar las credenciales desde la variable de entorno
 const credentialsEnv = process.env.GOOGLE_CREDENTIALS;
+
 if (!credentialsEnv) {
   console.error("❌ La variable de entorno 'GOOGLE_CREDENTIALS' no está configurada correctamente.");
   process.exit(1); // Detener la ejecución si no está configurada la variable
