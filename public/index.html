@@ -3,99 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <title>IoT Arroz</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      text-align: center;
-      color: #2e7d32;
-    }
-
-    .card {
-      background: white;
-      padding: 15px;
-      margin: 10px auto;
-      max-width: 400px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    .dato {
-      font-size: 18px;
-      margin: 8px 0;
-    }
-
-    .label {
-      font-weight: bold;
-    }
-
-    .recomendacion {
-      margin-top: 15px;
-      padding: 10px;
-      border-radius: 6px;
-      background: #e8f5e9;
-      color: #1b5e20;
-      font-weight: bold;
-      text-align: center;
-    }
+    body { font-family: Arial; padding: 20px; }
+    h1 { color: green; }
+    p { font-size: 18px; }
   </style>
 </head>
-
 <body>
 
-  <h1>🌱 Sistema IoT – Arroz</h1>
+<h1>🌱 IoT Arroz</h1>
 
-  <div class="card">
-    <div class="dato"><span class="label">Humedad suelo:</span> <span id="humedad">--</span> %</div>
-    <div class="dato"><span class="label">Temp. suelo:</span> <span id="temp_suelo">--</span> °C</div>
-    <div class="dato"><span class="label">Temp. ambiente:</span> <span id="temp_ambiente">--</span> °C</div>
-    <div class="dato"><span class="label">Luz:</span> <span id="luz">--</span></div>
-    <div class="dato"><span class="label">pH:</span> <span id="ph">--</span></div>
+<p>Humedad: <span id="humedad">-</span>%</p>
+<p>Temp Suelo: <span id="temp_suelo">-</span>°C</p>
+<p>Temp Ambiente: <span id="temp_ambiente">-</span>°C</p>
+<p>Luz: <span id="luz">-</span></p>
+<p>pH: <span id="ph">-</span></p>
 
-    <div class="recomendacion" id="recomendacion">
-      Esperando datos del sistema...
-    </div>
-  </div>
+<script>
+async function cargarDatos() {
+  const res = await fetch("/api/data");
+  const data = await res.json();
 
-  <script>
-    // Conexión WebSocket con Render
-    const ws = new WebSocket(`wss://${location.host}`);
+  if (!data.humedad) return;
 
-    ws.onmessage = (event) => {
-      const d = JSON.parse(event.data);
+  document.getElementById("humedad").innerText = data.humedad;
+  document.getElementById("temp_suelo").innerText = data.temp_suelo;
+  document.getElementById("temp_ambiente").innerText = data.temp_ambiente;
+  document.getElementById("luz").innerText = data.luz;
+  document.getElementById("ph").innerText = data.ph;
+}
 
-      document.getElementById("humedad").innerText = d.humedad;
-      document.getElementById("temp_suelo").innerText = d.temp_suelo;
-      document.getElementById("temp_ambiente").innerText = d.temp_ambiente;
-      document.getElementById("luz").innerText = d.luz;
-      document.getElementById("ph").innerText = d.ph;
-
-      // 🔹 Recomendación básica (IA simple)
-      let mensaje = "✅ Condiciones adecuadas para el replante de arroz";
-
-      if (d.humedad < 60) {
-        mensaje = "⚠️ Humedad baja, riesgo para el replante de arroz";
-      } else if (d.ph < 5.5 || d.ph > 6.5) {
-        mensaje = "⚠️ pH fuera del rango óptimo para arroz";
-      } else if (d.temp_suelo < 25 || d.temp_suelo > 35) {
-        mensaje = "⚠️ Temperatura del suelo no ideal";
-      }
-
-      document.getElementById("recomendacion").innerText = mensaje;
-    };
-
-    ws.onerror = () => {
-      document.getElementById("recomendacion").innerText =
-        "❌ Error de conexión con el servidor";
-    };
-  </script>
+setInterval(cargarDatos, 3000);
+</script>
 
 </body>
 </html>

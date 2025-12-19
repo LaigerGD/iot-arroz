@@ -1,64 +1,50 @@
 const express = require("express");
-const WebSocket = require("ws");
-
-// Para enviar datos a Google Sheets
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+const cors = require("cors");
+const fetch = require("node-fetch");
+const path = require("path");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 🔴 PEGA AQUÍ TU URL REAL DE GOOGLE SHEETS
+const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/TU_ID_REAL/exec";
+
+let lastData = {};
+
+app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-const PORT = process.env.PORT || 3000;
-
-// 🔴 PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwuajTzbzGCI2f4QFF8Z5VOWe4T1ipdire7msIElCBZgUcNqounNA3-LUQi5myEGg9b/exec";
-
-// Iniciar servidor HTTP
-const server = app.listen(PORT, () => {
-  console.log("✅ Servidor IoT Arroz activo en puerto", PORT);
+// Ruta principal
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// WebSocket
-const wss = new WebSocket.Server({ server });
-
-// Últimos datos recibidos
-let ultimoDato = {
-  humedad: "-",
-  temp_suelo: "-",
-  temp_ambiente: "-",
-  luz: "-",
-  ph: "-"
-};
-
-// Cuando la web se conecta
-wss.on("connection", (ws) => {
-  ws.send(JSON.stringify(ultimoDato));
-});
-
-// Endpoint que usa el ESP32
+// 📡 Ruta donde el ESP32 envía datos
 app.post("/api/data", async (req, res) => {
-  ultimoDato = req.body;
-
-  // 1️⃣ Enviar datos a la web en tiempo real
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(ultimoDato));
-    }
-  });
-
-  // 2️⃣ Guardar datos en Google Sheets (Excel)
   try {
+    lastData = req.body;
+
+    // Enviar a Google Sheets
     await fetch(GOOGLE_SHEETS_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(ultimoDato)
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lastData)
     });
-  } catch (error) {
-    console.error("❌ Error enviando a Google Sheets");
-  }
 
-  res.json({ status: "ok" });
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Error guardando datos" });
+  }
+});
+
+// 📊 Ruta para que la web lea datos
+app.get("/api/data", (req, res) => {
+  res.json(lastData);
+});
+
+// INICIAR SERVIDOR (ESTO EVITA EL ERROR ESTADO 1)
+app.listen(PORT, () => {
+  console.log("Servidor activo en puerto", PORT);
 });
