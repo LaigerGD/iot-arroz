@@ -4,216 +4,126 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema IoT Agrícola – Replante de Arroz</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f8ff;
-      color: #333;
-    }
-    .container {
-      width: 90%;
-      max-width: 1200px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    h1 {
-      margin-top: 30px;
-      color: #2d6a4f;
-    }
-    .chart-container {
-      display: flex;
-      justify-content: space-around;
-      margin: 20px 0;
-    }
-    .chart {
-      width: 30%;
-    }
-    .data-table {
-      margin-top: 20px;
-      border-collapse: collapse;
-      width: 100%;
-      margin-bottom: 30px;
-    }
-    .data-table th, .data-table td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: center;
-    }
-    .data-table th {
-      background-color: #2d6a4f;
-      color: white;
-    }
-    .data-table td {
-      background-color: #eaf2f1;
-    }
-    .status {
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    .status.success {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-    .status p {
-      margin: 0;
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Librería para gráficos -->
+  <link rel="stylesheet" href="styles.css"> <!-- Puedes agregar tus propios estilos -->
 </head>
 <body>
-  <div class="container">
+  <header>
     <h1>Sistema IoT Agrícola – Replante de Arroz</h1>
-    <div class="chart-container">
-      <div class="chart">
-        <canvas id="humidityChart"></canvas>
-      </div>
-      <div class="chart">
-        <canvas id="temperatureChart"></canvas>
-      </div>
-      <div class="chart">
-        <canvas id="lightChart"></canvas>
-      </div>
+  </header>
+  
+  <div class="container">
+    <div class="data-box">
+      <h3>Humedad (%)</h3>
+      <p id="humedad">-- %</p>
     </div>
-    <div class="chart-container">
-      <div class="chart">
-        <canvas id="phChart"></canvas>
-      </div>
+    <div class="data-box">
+      <h3>Temp. Suelo (°C)</h3>
+      <p id="temp_suelo">-- °C</p>
     </div>
-
-    <div class="status" id="status">
-      <p>Analizando condiciones del cultivo...</p>
+    <div class="data-box">
+      <h3>Temp. Ambiente (°C)</h3>
+      <p id="temp_ambiente">-- °C</p>
     </div>
-
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Humedad (%)</th>
-          <th>Temp. Suelo (°C)</th>
-          <th>Temp. Ambiente (°C)</th>
-          <th>Luz (lux)</th>
-          <th>pH</th>
-        </tr>
-      </thead>
-      <tbody id="data-table-body">
-        <tr>
-          <td id="humidity-data">--</td>
-          <td id="soil-temp-data">--</td>
-          <td id="ambient-temp-data">--</td>
-          <td id="light-data">--</td>
-          <td id="ph-data">--</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="data-box">
+      <h3>Luz (lux)</h3>
+      <p id="luz">-- lux</p>
+    </div>
+    <div class="data-box">
+      <h3>pH</h3>
+      <p id="ph">--</p>
+    </div>
   </div>
 
-  <script>
-    // Se configuran los gráficos de Chart.js
-    const ctxHumidity = document.getElementById('humidityChart').getContext('2d');
-    const ctxTemperature = document.getElementById('temperatureChart').getContext('2d');
-    const ctxLight = document.getElementById('lightChart').getContext('2d');
-    const ctxPh = document.getElementById('phChart').getContext('2d');
+  <!-- Gráficos con Chart.js -->
+  <div class="chart-container">
+    <canvas id="humedadChart"></canvas>
+    <canvas id="tempSueloChart"></canvas>
+  </div>
 
-    const humidityChart = new Chart(ctxHumidity, {
+  <footer>
+    <p>IoT Arroz © 2025</p>
+  </footer>
+
+  <script>
+    // Función para obtener los datos del servidor
+    async function fetchData() {
+      try {
+        const response = await fetch('https://iot-arroz.onrender.com/api/data'); // URL de tu servidor
+        const data = await response.json();
+
+        // Actualizar los valores de la página con los datos del servidor
+        document.getElementById('humedad').innerText = `${data.humedad}%`;
+        document.getElementById('temp_suelo').innerText = `${data.temp_suelo} °C`;
+        document.getElementById('temp_ambiente').innerText = `${data.temp_ambiente} °C`;
+        document.getElementById('luz').innerText = `${data.luz} lux`;
+        document.getElementById('ph').innerText = `${data.ph}`;
+
+        // Llamar a la función de actualización de gráficos
+        updateCharts(data);
+      } catch (error) {
+        console.error('Error al obtener los datos:', error);
+      }
+    }
+
+    // Función para actualizar los gráficos
+    function updateCharts(data) {
+      humedadChart.data.datasets[0].data.push(data.humedad); // Agregar dato al gráfico de humedad
+      tempSueloChart.data.datasets[0].data.push(data.temp_suelo); // Agregar dato al gráfico de temperatura del suelo
+      humedadChart.update();
+      tempSueloChart.update();
+    }
+
+    // Llamar la función cada 5 segundos
+    setInterval(fetchData, 5000);
+
+    // Inicializar los gráficos con Chart.js
+    const ctxHumedad = document.getElementById('humedadChart').getContext('2d');
+    const ctxTempSuelo = document.getElementById('tempSueloChart').getContext('2d');
+
+    const humedadChart = new Chart(ctxHumedad, {
       type: 'line',
       data: {
         labels: [],
         datasets: [{
           label: 'Humedad (%)',
           data: [],
-          borderColor: 'rgba(75, 192, 192, 1)',
+          borderColor: 'rgb(0, 123, 255)',
           fill: false,
-        }],
+        }]
       },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom'
+          }
+        }
+      }
     });
 
-    const temperatureChart = new Chart(ctxTemperature, {
+    const tempSueloChart = new Chart(ctxTempSuelo, {
       type: 'line',
       data: {
         labels: [],
         datasets: [{
-          label: 'Temperatura Suelo (°C)',
+          label: 'Temperatura del Suelo (°C)',
           data: [],
-          borderColor: 'rgba(255, 99, 132, 1)',
+          borderColor: 'rgb(255, 99, 132)',
           fill: false,
-        }],
+        }]
       },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom'
+          }
+        }
+      }
     });
-
-    const lightChart = new Chart(ctxLight, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Luz (lux)',
-          data: [],
-          borderColor: 'rgba(255, 159, 64, 1)',
-          fill: false,
-        }],
-      },
-    });
-
-    const phChart = new Chart(ctxPh, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'pH',
-          data: [],
-          borderColor: 'rgba(153, 102, 255, 1)',
-          fill: false,
-        }],
-      },
-    });
-
-    // Función para actualizar los datos en la página y los gráficos
-    function updateData(data) {
-      // Actualizar los datos de la tabla
-      document.getElementById('humidity-data').textContent = data.humidity;
-      document.getElementById('soil-temp-data').textContent = data.soilTemp;
-      document.getElementById('ambient-temp-data').textContent = data.ambientTemp;
-      document.getElementById('light-data').textContent = data.light;
-      document.getElementById('ph-data').textContent = data.ph;
-
-      // Actualizar los gráficos
-      const currentTime = new Date().toLocaleTimeString();
-      humidityChart.data.labels.push(currentTime);
-      humidityChart.data.datasets[0].data.push(data.humidity);
-      humidityChart.update();
-
-      temperatureChart.data.labels.push(currentTime);
-      temperatureChart.data.datasets[0].data.push(data.soilTemp);
-      temperatureChart.update();
-
-      lightChart.data.labels.push(currentTime);
-      lightChart.data.datasets[0].data.push(data.light);
-      lightChart.update();
-
-      phChart.data.labels.push(currentTime);
-      phChart.data.datasets[0].data.push(data.ph);
-      phChart.update();
-
-      // Actualizar el estado de la conexión
-      document.getElementById('status').classList.remove('success');
-      document.getElementById('status').classList.add('success');
-      document.getElementById('status').textContent = 'Conexión exitosa. Datos recibidos.';
-    }
-
-    // Simulando la obtención de datos desde un servidor
-    setInterval(() => {
-      // Simulación de datos recibidos
-      const data = {
-        humidity: (Math.random() * (90 - 60) + 60).toFixed(2),
-        soilTemp: (Math.random() * (35 - 25) + 25).toFixed(2),
-        ambientTemp: (Math.random() * (30 - 20) + 20).toFixed(2),
-        light: (Math.random() * (1000 - 300) + 300).toFixed(2),
-        ph: (Math.random() * (7 - 5) + 5).toFixed(2),
-      };
-      updateData(data);
-    }, 5000); // Actualiza los datos cada 5 segundos
   </script>
 </body>
 </html>
