@@ -1,52 +1,88 @@
-/**
- * server.js
- * Backend simple para web IoT Arroz
- */
-
+// ===============================
+// IMPORTACIONES
+// ===============================
 const express = require("express");
 const path = require("path");
+const bodyParser = require("body-parser");
+const { google } = require("googleapis");
 
+// ===============================
+// CONFIGURACIÓN BÁSICA
+// ===============================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ---------------- DATOS SIMULADOS ----------------
-let data = {
-  humedad: 70,
-  temp_suelo: 26,
-  temp_ambiente: 30,
-  luz: 700,
-  ph: 6.2,
-  fecha: new Date()
-};
+// ⚠️ ID DE TU GOOGLE SHEET (CONFIRMADO)
+const SPREADSHEET_ID = "19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y";
 
-// Simular sensores cada 3 segundos
-setInterval(() => {
-  data = {
-    humedad: Math.floor(Math.random() * 30) + 60,
-    temp_suelo: (Math.random() * 10 + 25).toFixed(1),
-    temp_ambiente: (Math.random() * 10 + 28).toFixed(1),
-    luz: Math.floor(Math.random() * 600) + 400,
-    ph: (Math.random() * 1.5 + 5.5).toFixed(1),
-    fecha: new Date()
-  };
-}, 3000);
+// ===============================
+// MIDDLEWARE
+// ===============================
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// ---------------- MIDDLEWARE ----------------
-app.use(express.static("public"));
+// ===============================
+// AUTENTICACIÓN GOOGLE SHEETS
+// ===============================
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
 
-// ---------------- RUTAS ----------------
+const sheets = google.sheets({
+  version: "v4",
+  auth,
+});
 
-// Página principal
+// ===============================
+// RUTA PRINCIPAL (WEB)
+// ===============================
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// API para enviar datos a la web
-app.get("/api/data", (req, res) => {
-  res.json(data);
+// ===============================
+// API: RECIBIR DATOS (ESP32 / POSTMAN)
+// ===============================
+app.post("/api/data", async (req, res) => {
+  try {
+    const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
+
+    const fecha = new Date().toLocaleString("es-PE");
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "Hoja 1!A:F",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[fecha, humedad, temp_suelo, temp_ambiente, luz, ph]],
+      },
+    });
+
+    console.log("✅ Datos guardados en Google Sheets");
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("❌ Error guardando datos:", error);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// ---------------- INICIAR SERVIDOR ----------------
+// ===============================
+// API: DATOS PARA LA WEB (SIMULADOS)
+// ===============================
+app.get("/api/data", (req, res) => {
+  res.json({
+    humedad: Math.floor(Math.random() * 20) + 70,
+    temp_suelo: (Math.random() * 5 + 24).toFixed(1),
+    temp_ambiente: (Math.random() * 5 + 28).toFixed(1),
+    luz: Math.floor(Math.random() * 500) + 400,
+    ph: (Math.random() * 1 + 5.8).toFixed(2),
+  });
+});
+
+// ===============================
+// INICIAR SERVIDOR
+// ===============================
 app.listen(PORT, () => {
-  console.log(`✅ Servidor IoT Arroz activo en puerto ${PORT}`);
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
