@@ -1,83 +1,89 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>IoT Arroz - Monitoreo</title>
+  <meta charset="UTF-8" />
+  <title>Sistema IoT Agrícola – Cultivo de Arroz</title>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f5;
       margin: 0;
-      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f4f6f4;
     }
 
-    /* ===== HEADER ===== */
-    .header {
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 15px 20px;
       display: flex;
       align-items: center;
       gap: 15px;
-      padding: 15px;
-      background: #2e7d32;
-      color: white;
-      border-radius: 10px;
-      margin-bottom: 20px;
+      border-radius: 0 0 12px 12px;
     }
 
-    .logo {
-      height: 60px;
+    header img {
+      height: 55px;
       background: white;
       padding: 5px;
-      border-radius: 6px;
+      border-radius: 8px;
     }
 
-    /* ===== STATUS ===== */
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
     .status {
+      margin: 15px;
       padding: 10px;
-      margin-bottom: 15px;
-      border-radius: 8px;
-      font-weight: bold;
       text-align: center;
+      font-weight: bold;
+      border-radius: 8px;
     }
 
     .ok {
       background: #c8e6c9;
-      color: #2e7d32;
+      color: #1b5e20;
     }
 
-    .error {
+    .bad {
       background: #ffcdd2;
       color: #b71c1c;
     }
 
-    /* ===== GRID ===== */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      padding: 15px;
     }
 
     .card {
       background: white;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    .card h3 {
+      margin: 5px 0;
+      text-align: center;
     }
 
     .value {
-      font-size: 18px;
-      font-weight: bold;
       text-align: center;
+      font-size: 20px;
+      font-weight: bold;
       margin-top: 8px;
     }
 
-    /* ===== AI ASSISTANT ===== */
     .assistant {
-      margin-top: 25px;
-      padding: 15px;
+      margin: 15px;
       background: #e3f2fd;
-      border-left: 6px solid #1565c0;
+      border-left: 6px solid #1976d2;
+      padding: 15px;
       border-radius: 8px;
     }
   </style>
@@ -85,18 +91,17 @@
 
 <body>
 
-  <!-- ===== HEADER ===== -->
-  <div class="header">
-    <img src="logo.png" class="logo" alt="Institución">
-    <h2>Sistema IoT Agrícola – Cultivo de Arroz</h2>
-  </div>
+  <!-- HEADER -->
+  <header>
+    <!-- CAMBIA LA RUTA SI ES NECESARIO -->
+    <img src="logo.png" alt="Institución" />
+    <h1>Sistema IoT Agrícola – Cultivo de Arroz</h1>
+  </header>
 
-  <!-- ===== STATUS ===== -->
-  <div id="connectionStatus" class="status error">
-    ESP32 DESCONECTADO
-  </div>
+  <!-- ESTADO -->
+  <div id="status" class="status">Cargando...</div>
 
-  <!-- ===== DASHBOARD ===== -->
+  <!-- GRAFICAS -->
   <div class="grid">
 
     <div class="card">
@@ -137,119 +142,111 @@
 
   </div>
 
-  <!-- ===== AI ASSISTANT ===== -->
+  <!-- ASISTENTE IA -->
   <div class="assistant">
-    <h3>🤖 Asistente IA</h3>
-    <p id="aiMessage">Esperando datos del sistema...</p>
+    <strong>🤖 Asistente IA</strong>
+    <p id="assistantText">Analizando datos...</p>
   </div>
 
 <script>
-  const maxPoints = 10;
-  let labels = [];
-
-  const history = {
-    humedad: [],
-    temp_suelo: [],
-    temp_ambiente: [],
-    luz: [],
-    ph: [],
-    bateria: []
-  };
-
-  function createChart(id, label) {
-    return new Chart(document.getElementById(id), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label,
-          data: [],
-          borderWidth: 2,
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        animation: false
+/* =======================
+   CHART FACTORY
+======================= */
+function createChart(id, label) {
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderWidth: 2,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false }
       }
-    });
-  }
-
-  const humedadChart = createChart('humedadChart', 'Humedad %');
-  const tempSueloChart = createChart('tempSueloChart', 'Temp Suelo °C');
-  const tempAmbienteChart = createChart('tempAmbienteChart', 'Temp Ambiente °C');
-  const luzChart = createChart('luzChart', 'Luz');
-  const phChart = createChart('phChart', 'pH');
-  const bateriaChart = createChart('bateriaChart', 'Batería %');
-
-  async function fetchData() {
-    try {
-      const res = await fetch('/api/data');
-      const data = await res.json();
-
-      const connected = Object.values(data).some(v => v !== 0);
-
-      const status = document.getElementById('connectionStatus');
-      if (!connected) {
-        status.textContent = 'ESP32 DESCONECTADO';
-        status.className = 'status error';
-        return;
-      } else {
-        status.textContent = 'ESP32 CONECTADO';
-        status.className = 'status ok';
-      }
-
-      const time = new Date().toLocaleTimeString();
-      labels.push(time);
-      if (labels.length > maxPoints) labels.shift();
-
-      Object.keys(history).forEach(k => {
-        history[k].push(data[k]);
-        if (history[k].length > maxPoints) history[k].shift();
-      });
-
-      humedadChart.data.datasets[0].data = history.humedad;
-      tempSueloChart.data.datasets[0].data = history.temp_suelo;
-      tempAmbienteChart.data.datasets[0].data = history.temp_ambiente;
-      luzChart.data.datasets[0].data = history.luz;
-      phChart.data.datasets[0].data = history.ph;
-      bateriaChart.data.datasets[0].data = history.bateria;
-
-      humedadChart.update();
-      tempSueloChart.update();
-      tempAmbienteChart.update();
-      luzChart.update();
-      phChart.update();
-      bateriaChart.update();
-
-      document.getElementById('humedadValue').textContent = data.humedad + ' %';
-      document.getElementById('tempSueloValue').textContent = data.temp_suelo + ' °C';
-      document.getElementById('tempAmbienteValue').textContent = data.temp_ambiente + ' °C';
-      document.getElementById('luzValue').textContent = data.luz;
-      document.getElementById('phValue').textContent = data.ph;
-      document.getElementById('bateriaValue').textContent = data.bateria + ' %';
-
-      generateAIMessage(data);
-
-    } catch (err) {
-      console.error(err);
     }
+  });
+}
+
+/* =======================
+   CHARTS
+======================= */
+const humedadChart = createChart('humedadChart', 'Humedad %');
+const tempSueloChart = createChart('tempSueloChart', 'Temp Suelo');
+const tempAmbienteChart = createChart('tempAmbienteChart', 'Temp Ambiente');
+const luzChart = createChart('luzChart', 'Luz');
+const phChart = createChart('phChart', 'pH');
+const bateriaChart = createChart('bateriaChart', 'Batería');
+
+/* =======================
+   FETCH DATA
+======================= */
+async function fetchData() {
+  try {
+    const res = await fetch('/api/data');
+    const data = await res.json();
+
+    // STATUS
+    const statusDiv = document.getElementById('status');
+    statusDiv.textContent = data.status;
+    statusDiv.className = 'status ' + (data.status.includes('DESCONECTADO') ? 'bad' : 'ok');
+
+    const h = data.history;
+
+    humedadChart.data.labels = h.labels;
+    humedadChart.data.datasets[0].data = h.humedad;
+    humedadChart.update();
+
+    tempSueloChart.data.labels = h.labels;
+    tempSueloChart.data.datasets[0].data = h.temp_suelo;
+    tempSueloChart.update();
+
+    tempAmbienteChart.data.labels = h.labels;
+    tempAmbienteChart.data.datasets[0].data = h.temp_ambiente;
+    tempAmbienteChart.update();
+
+    luzChart.data.labels = h.labels;
+    luzChart.data.datasets[0].data = h.luz;
+    luzChart.update();
+
+    phChart.data.labels = h.labels;
+    phChart.data.datasets[0].data = h.ph;
+    phChart.update();
+
+    bateriaChart.data.labels = h.labels;
+    bateriaChart.data.datasets[0].data = h.bateria;
+    bateriaChart.update();
+
+    // VALUES
+    const l = data.latest;
+    humedadValue.textContent = l.humedad + ' %';
+    tempSueloValue.textContent = l.temp_suelo + ' °C';
+    tempAmbienteValue.textContent = l.temp_ambiente + ' °C';
+    luzValue.textContent = l.luz;
+    phValue.textContent = l.ph;
+    bateriaValue.textContent = l.bateria + ' %';
+
+    // ASSISTANT IA
+    let msg = 'Condiciones óptimas para el cultivo.';
+    if (l.bateria < 30) msg = '⚠️ Batería baja, revisar panel solar.';
+    if (l.humedad < 50) msg = '⚠️ Humedad baja, posible riego necesario.';
+    if (data.status.includes('DESCONECTADO')) msg = '❌ ESP32 sin comunicación.';
+
+    assistantText.textContent = msg;
+
+  } catch (e) {
+    console.error(e);
   }
+}
 
-  function generateAIMessage(d) {
-    let msg = '';
-
-    if (d.bateria < 20) msg += '⚠️ Batería baja. ';
-    if (d.humedad < 40) msg += 'El suelo está seco. ';
-    if (d.humedad > 80) msg += 'Exceso de humedad. ';
-    if (d.ph < 5.5) msg += 'El suelo es ácido. ';
-    if (d.ph > 7.5) msg += 'El suelo es alcalino. ';
-    if (msg === '') msg = '✅ El terreno está en condiciones óptimas.';
-
-    document.getElementById('aiMessage').textContent = msg;
-  }
-
-  setInterval(fetchData, 3000);
+fetchData();
+setInterval(fetchData, 3000);
 </script>
 
 </body>

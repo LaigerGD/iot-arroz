@@ -1,113 +1,106 @@
 const express = require('express');
-const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 
 const app = express();
-
-/* =======================
-   CONFIGURACIÓN
-======================= */
-
-// URL DE TU APPS SCRIPT (Google Sheets)
-const GOOGLE_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbyXmVGl8Dg37m6203GUNbkqesn9GcVzV8uU4rHQe8cX6Cs4ijrA1NdU0c_24CGWN0tR/exec';
-
-// Tiempo máximo sin datos (ms) para considerar desconectado
-const TIMEOUT_MS = 15000;
-
-/* =======================
-   MIDDLEWARES
-======================= */
-
 app.use(cors());
 app.use(express.json());
 
-// Servir archivos estáticos (HTML, CSS, JS, imágenes)
-app.use(express.static(path.join(__dirname, 'public')));
+// =======================
+// CONFIG
+// =======================
+const MAX_POINTS = 20;
+const PORT = process.env.PORT || 3000;
 
-/* =======================
-   ESTADO GLOBAL
-======================= */
-
-let latestData = {
-  humedad: 0,
-  temp_suelo: 0,
-  temp_ambiente: 0,
-  luz: 0,
-  ph: 0,
-  bateria: 0,
-  timestamp: null
+// =======================
+// DATA STORAGE
+// =======================
+let history = {
+  labels: [],
+  humedad: [],
+  temp_suelo: [],
+  temp_ambiente: [],
+  luz: [],
+  ph: [],
+  bateria: []
 };
 
-/* =======================
-   ENDPOINT ESP32
-======================= */
+let lastDataTime = null;
 
-app.post('/api/data', async (req, res) => {
-  const data = req.body;
+// =======================
+// HELPER
+// =======================
+function pushData(arr, value) {
+  arr.push(value);
+  if (arr.length > MAX_POINTS) arr.shift();
+}
 
-  // Validación básica
-  if (!data) {
-    return res.status(400).json({ error: 'Datos inválidos' });
-  }
+function pushLabel() {
+  const time = new Date().toLocaleTimeString();
+  history.labels.push(time);
+  if (history.labels.length > MAX_POINTS) history.labels.shift();
+}
 
-  // Guardar último estado
-  latestData = {
-    humedad: data.humedad || 0,
-    temp_suelo: data.temp_suelo || 0,
-    temp_ambiente: data.temp_ambiente || 0,
-    luz: data.luz || 0,
-    ph: data.ph || 0,
-    bateria: data.bateria || 0,
-    timestamp: Date.now()
-  };
+// =======================
+// API – RECEIVE DATA FROM ESP32
+// =======================
+app.post('/api/data', (req, res) => {
+  const {
+    humedad = 0,
+    temp_suelo = 0,
+    temp_ambiente = 0,
+    luz = 0,
+    ph = 0,
+    bateria = 0
+  } = req.body;
 
-  // Enviar a Google Sheets
-  try {
-    await axios.post(GOOGLE_SCRIPT_URL, latestData, {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    console.error('Error enviando a Google Sheets:', error.message);
-  }
+  pushLabel();
+  pushData(history.humedad, humedad);
+  pushData(history.temp_suelo, temp_suelo);
+  pushData(history.temp_ambiente, temp_ambiente);
+  pushData(history.luz, luz);
+  pushData(history.ph, ph);
+  pushData(history.bateria, bateria);
 
-  res.json({ status: 'OK' });
+  lastDataTime = Date.now();
+
+  res.json({ ok: true });
 });
 
-/* =======================
-   ENDPOINT DASHBOARD
-======================= */
-
+// =======================
+// API – SEND DATA TO FRONTEND
+// =======================
 app.get('/api/data', (req, res) => {
-  let status = 'ESP32 CONECTADO';
+  let status = 'ESP32 DESCONECTADO';
 
-  if (
-    !latestData.timestamp ||
-    Date.now() - latestData.timestamp > TIMEOUT_MS
-  ) {
-    status = 'ESP32 DESCONECTADO';
+  if (lastDataTime && Date.now() - lastDataTime < 10000) {
+    status = 'ESP32 CONECTADO';
   }
 
+  const latestIndex = history.humedad.length - 1;
+
   res.json({
-    ...latestData,
-    status
+    status,
+    latest: {
+      humedad: history.humedad[latestIndex] || 0,
+      temp_suelo: history.temp_suelo[latestIndex] || 0,
+      temp_ambiente: history.temp_ambiente[latestIndex] || 0,
+      luz: history.luz[latestIndex] || 0,
+      ph: history.ph[latestIndex] || 0,
+      bateria: history.bateria[latestIndex] || 0
+    },
+    history
   });
 });
 
-/* =======================
-   RUTA PRINCIPAL
-======================= */
+// =======================
+// STATIC FILES (HTML, LOGO)
+// =======================
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-/* =======================
-   SERVIDOR
-======================= */
-
-const PORT = process.env.PORT || 3000;
+// =======================
+// START SERVER
+// =======================
 app.listen(PORT, () => {
-  console.log(`Servidor IoT activo en puerto ${PORT}`);
+  console.log(`✅ Server corriendo en puerto ${PORT}`);
 });
