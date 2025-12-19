@@ -1,48 +1,64 @@
-import express from "express";
-import cors from "cors";
-import db from "./firebase.js";
+const express = require("express");
+const WebSocket = require("ws");
+
+// Para enviar datos a Google Sheets
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
-
-// Middlewares
-app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
-// Ruta para recibir datos del ESP32
-app.post("/datos", async (req, res) => {
-  try {
-    await db.ref("sensores").push({
-      ...req.body,
-      fecha: Date.now()
-    });
-
-    res.json({ ok: true });
-  } catch (error) {
-    console.error("Error guardando datos:", error);
-    res.status(500).json({ error: "Error al guardar datos" });
-  }
-});
-
-// Ruta para enviar el último dato a la web
-app.get("/datos", async (req, res) => {
-  try {
-    const snapshot = await db
-      .ref("sensores")
-      .limitToLast(1)
-      .once("value");
-
-    const data = snapshot.val();
-    const ultimo = data ? Object.values(data)[0] : {};
-
-    res.json(ultimo);
-  } catch (error) {
-    console.error("Error leyendo datos:", error);
-    res.status(500).json({ error: "Error al leer datos" });
-  }
-});
-
-// Puerto (Render usa process.env.PORT)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("✅ Servidor listo en puerto", PORT);
+
+// 🔴 PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwuajTzbzGCI2f4QFF8Z5VOWe4T1ipdire7msIElCBZgUcNqounNA3-LUQi5myEGg9b/exec";
+
+// Iniciar servidor HTTP
+const server = app.listen(PORT, () => {
+  console.log("✅ Servidor IoT Arroz activo en puerto", PORT);
+});
+
+// WebSocket
+const wss = new WebSocket.Server({ server });
+
+// Últimos datos recibidos
+let ultimoDato = {
+  humedad: "-",
+  temp_suelo: "-",
+  temp_ambiente: "-",
+  luz: "-",
+  ph: "-"
+};
+
+// Cuando la web se conecta
+wss.on("connection", (ws) => {
+  ws.send(JSON.stringify(ultimoDato));
+});
+
+// Endpoint que usa el ESP32
+app.post("/api/data", async (req, res) => {
+  ultimoDato = req.body;
+
+  // 1️⃣ Enviar datos a la web en tiempo real
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(ultimoDato));
+    }
+  });
+
+  // 2️⃣ Guardar datos en Google Sheets (Excel)
+  try {
+    await fetch(GOOGLE_SHEETS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(ultimoDato)
+    });
+  } catch (error) {
+    console.error("❌ Error enviando a Google Sheets");
+  }
+
+  res.json({ status: "ok" });
 });
