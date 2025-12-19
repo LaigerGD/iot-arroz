@@ -1,117 +1,75 @@
-// ===============================
-// IMPORTS
-// ===============================
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const path = require("path");
 
-// ===============================
-// CONFIG
-// ===============================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// URL REAL de tu Apps Script
-const GOOGLE_SHEETS_URL =
+// URL DE TU APPS SCRIPT (LA QUE YA PASASTE)
+const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyXmVGl8Dg37m6203GUNbkqesn9GcVzV8uU4rHQe8cX6Cs4ijrA1NdU0c_24CGWN0tR/exec";
 
-// ===============================
-// MIDDLEWARE
-// ===============================
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// ===============================
-// ESTADO GLOBAL (último dato)
-// ===============================
+// ====== MEMORIA EN TIEMPO REAL ======
 let lastData = {
-  humedad: null,
-  temp_suelo: null,
-  temp_ambiente: null,
-  luz: null,
-  ph: null,
-  fecha: null
+  humedad: 0,
+  temp_suelo: 0,
+  temp_ambiente: 0,
+  luz: 0,
+  ph: 0,
 };
 
-// ===============================
-// RUTAS
-// ===============================
+let history = {
+  humedad: [],
+  temp_suelo: [],
+  temp_ambiente: [],
+  luz: [],
+  ph: [],
+  labels: [],
+};
 
-// Ruta base (test)
-app.get("/", (req, res) => {
-  res.send("Servidor IoT Arroz activo 🌾");
-});
-
-// -------------------------------
-// ESP32 → SERVER
-// -------------------------------
+// ====== RECIBIR DATOS DEL ESP32 ======
 app.post("/api/data", async (req, res) => {
-  try {
-    const {
-      humedad,
-      temp_suelo,
-      temp_ambiente,
-      luz,
-      ph
-    } = req.body;
+  const data = req.body;
+  const timestamp = new Date().toLocaleTimeString();
 
-    // Validación básica
-    if (
-      humedad === undefined ||
-      temp_suelo === undefined ||
-      temp_ambiente === undefined ||
-      luz === undefined ||
-      ph === undefined
-    ) {
-      return res.status(400).json({
-        status: "error",
-        message: "Datos incompletos"
-      });
-    }
+  lastData = data;
 
-    // Guardar último estado
-    lastData = {
-      humedad,
-      temp_suelo,
-      temp_ambiente,
-      luz,
-      ph,
-      fecha: new Date().toISOString()
-    };
+  history.humedad.push(data.humedad);
+  history.temp_suelo.push(data.temp_suelo);
+  history.temp_ambiente.push(data.temp_ambiente);
+  history.luz.push(data.luz);
+  history.ph.push(data.ph);
+  history.labels.push(timestamp);
 
-    // Enviar a Google Sheets
-    await axios.post(GOOGLE_SHEETS_URL, {
-      humedad,
-      temp_suelo,
-      temp_ambiente,
-      luz,
-      ph
-    });
-
-    res.json({
-      status: "ok",
-      message: "Datos recibidos y guardados"
-    });
-
-  } catch (error) {
-    console.error("Error:", error.message);
-    res.status(500).json({
-      status: "error",
-      message: "Error interno del servidor"
-    });
+  // Limitar historial
+  if (history.labels.length > 20) {
+    Object.keys(history).forEach((k) => history[k].shift());
   }
+
+  // Enviar a Google Sheets
+  try {
+    await axios.post(GOOGLE_SCRIPT_URL, data);
+  } catch (err) {
+    console.error("Error Google Sheets:", err.message);
+  }
+
+  res.json({ status: "OK" });
 });
 
-// -------------------------------
-// FRONTEND → SERVER
-// -------------------------------
+// ====== DATOS PARA EL DASHBOARD ======
 app.get("/api/data", (req, res) => {
-  res.json(lastData);
+  res.json({
+    ...lastData,
+    history,
+  });
 });
 
-// ===============================
-// START SERVER
-// ===============================
+// ====== START ======
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`Servidor activo en puerto ${PORT}`);
 });
