@@ -1,70 +1,75 @@
-const express = require("express");
-const path = require("path");
-const bodyParser = require("body-parser");
-const { google } = require("googleapis");
+// Importar las dependencias
+const express = require('express');
+const bodyParser = require('body-parser');
+const { GoogleSpreadsheet } = require('google-spreadsheet');
+const cors = require('cors');
 
+// Configurar el servidor Express
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// ID de tu Google Sheet
-const SPREADSHEET_ID = "19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y";
+// Configurar CORS para permitir solicitudes desde cualquier origen
+app.use(cors());
 
-// Middleware
+// Middleware para manejar el cuerpo de las solicitudes como JSON
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
 
-// Autenticación con Google Sheets API
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-});
+// Cargar las credenciales del servicio de Google Sheets
+const doc = new GoogleSpreadsheet('19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y'); // ID de la hoja de Google Sheets
 
-const sheets = google.sheets({ version: "v4", auth });
+// Cargar las credenciales desde el archivo JSON
+const credentials = require('./credentials.json'); // Ruta del archivo de credenciales del servicio de Google
 
-// Ruta para mostrar la página principal
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// API para recibir los datos del ESP32 y guardarlos en Google Sheets
-app.post("/api/data", async (req, res) => {
+// Función para conectar a Google Sheets
+async function connectToGoogleSheets() {
   try {
+    await doc.useServiceAccountAuth(credentials); // Autenticarse con Google
+    await doc.loadInfo(); // Cargar la información de la hoja de cálculo
+    console.log('Conexión exitosa con Google Sheets');
+  } catch (error) {
+    console.error('Error al conectar con Google Sheets:', error);
+    throw new Error('No se pudo conectar a Google Sheets');
+  }
+}
+
+// Endpoint para recibir los datos del ESP32
+app.post('/api/data', async (req, res) => {
+  try {
+    // Obtener los datos del cuerpo de la solicitud
     const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
 
-    const fecha = new Date().toLocaleString("es-PE");
+    // Verificar si los datos son válidos
+    if (isNaN(humedad) || isNaN(temp_suelo) || isNaN(temp_ambiente) || isNaN(luz) || isNaN(ph)) {
+      return res.status(400).send('Datos inválidos');
+    }
 
-    // Guardar los datos en Google Sheets
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "Hoja 1!A:F",
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[fecha, humedad, temp_suelo, temp_ambiente, luz, ph]],
-      },
+    // Guardar los datos en la hoja de Google Sheets
+    const sheet = doc.sheetsByIndex[0]; // Asegúrate de que la hoja correcta está seleccionada
+    await sheet.addRow({
+      Fecha: new Date().toLocaleString(), // Registrar la fecha y hora
+      Humedad: humedad,
+      Temp_Suelo: temp_suelo,
+      Temp_Ambiente: temp_ambiente,
+      Luz: luz,
+      pH: ph,
     });
 
-    console.log("✅ Datos guardados en Google Sheets");
-    res.json({ ok: true, message: "Datos guardados" });
+    console.log(`Datos guardados en Google Sheets: ${JSON.stringify(req.body)}`);
+
+    // Responder que los datos fueron guardados correctamente
+    res.status(200).send('Datos guardados en Google Sheets');
   } catch (error) {
-    console.error("❌ Error al guardar:", error);
-    res.status(500).json({ ok: false, error: "Error guardando datos" });
+    console.error('Error al guardar los datos:', error);
+    res.status(500).send('Error al guardar los datos');
   }
 });
 
-// API para enviar datos simulados a la página web
-app.get("/api/data", (req, res) => {
-  const data = {
-    humedad: Math.floor(Math.random() * 20) + 70,
-    temp_suelo: (Math.random() * 5 + 24).toFixed(1),
-    temp_ambiente: (Math.random() * 5 + 28).toFixed(1),
-    luz: Math.floor(Math.random() * 500) + 400,
-    ph: (Math.random() * 1 + 5.8).toFixed(2),
-  };
-
-  res.json(data);
-});
-
-// Iniciar el servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor activo en puerto ${PORT}`);
+// Iniciar el servidor y conectar a Google Sheets
+app.listen(port, async () => {
+  try {
+    await connectToGoogleSheets();
+    console.log(`Servidor escuchando en http://localhost:${port}`);
+  } catch (error) {
+    console.error('No se pudo iniciar el servidor:', error);
+  }
 });
