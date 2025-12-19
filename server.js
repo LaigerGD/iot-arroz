@@ -1,50 +1,52 @@
+/**
+ * server.js
+ * Backend simple para web IoT Arroz
+ */
+
 const express = require("express");
-const cors = require("cors");
-const fetch = require("node-fetch");
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔴 PEGA AQUÍ TU URL REAL DE GOOGLE SHEETS
-const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/TU_ID_REAL/exec";
+// ---------------- DATOS SIMULADOS ----------------
+let data = {
+  humedad: 70,
+  temp_suelo: 26,
+  temp_ambiente: 30,
+  luz: 700,
+  ph: 6.2,
+  fecha: new Date()
+};
 
-let lastData = {};
+// Simular sensores cada 3 segundos
+setInterval(() => {
+  data = {
+    humedad: Math.floor(Math.random() * 30) + 60,
+    temp_suelo: (Math.random() * 10 + 25).toFixed(1),
+    temp_ambiente: (Math.random() * 10 + 28).toFixed(1),
+    luz: Math.floor(Math.random() * 600) + 400,
+    ph: (Math.random() * 1.5 + 5.5).toFixed(1),
+    fecha: new Date()
+  };
+}, 3000);
 
-app.use(cors());
-app.use(express.json());
+// ---------------- MIDDLEWARE ----------------
 app.use(express.static("public"));
 
-// Ruta principal
+// ---------------- RUTAS ----------------
+
+// Página principal
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// 📡 Ruta donde el ESP32 envía datos
-app.post("/api/data", async (req, res) => {
-  try {
-    lastData = req.body;
-
-    // Enviar a Google Sheets
-    await fetch(GOOGLE_SHEETS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(lastData)
-    });
-
-    res.status(200).json({ ok: true });
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Error guardando datos" });
-  }
-});
-
-// 📊 Ruta para que la web lea datos
+// API para enviar datos a la web
 app.get("/api/data", (req, res) => {
-  res.json(lastData);
+  res.json(data);
 });
 
-// INICIAR SERVIDOR (ESTO EVITA EL ERROR ESTADO 1)
+// ---------------- INICIAR SERVIDOR ----------------
 app.listen(PORT, () => {
-  console.log("Servidor activo en puerto", PORT);
+  console.log(`✅ Servidor IoT Arroz activo en puerto ${PORT}`);
 });
