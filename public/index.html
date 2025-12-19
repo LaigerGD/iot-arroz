@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema IoT Agrícola - Replante de Arroz</title>
+    <title>Sistema IoT Agrícola – Replante de Arroz</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
@@ -15,14 +15,21 @@
         }
         .card-body {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
+            flex-direction: column;
         }
         .card {
             margin-bottom: 20px;
         }
         .table {
             margin-top: 30px;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -38,6 +45,9 @@
                     <div class="card-body">
                         <h5 class="card-title">Humedad (%)</h5>
                         <canvas id="humidityChart"></canvas>
+                        <div class="data-row">
+                            <span id="humidityData">-- %</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -46,6 +56,9 @@
                     <div class="card-body">
                         <h5 class="card-title">Temp. Suelo (°C)</h5>
                         <canvas id="soilTempChart"></canvas>
+                        <div class="data-row">
+                            <span id="soilTempData">-- °C</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -54,6 +67,9 @@
                     <div class="card-body">
                         <h5 class="card-title">Temp. Ambiente (°C)</h5>
                         <canvas id="ambientTempChart"></canvas>
+                        <div class="data-row">
+                            <span id="ambientTempData">-- °C</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -62,6 +78,9 @@
                     <div class="card-body">
                         <h5 class="card-title">Luz (lux)</h5>
                         <canvas id="lightChart"></canvas>
+                        <div class="data-row">
+                            <span id="lightData">-- lux</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,6 +139,12 @@
             ambientTempData.push(data.temp_ambiente);
             lightData.push(data.luz);
             phData.push(data.ph);
+
+            // Actualizar valores debajo de los gráficos
+            document.getElementById("humidityData").innerText = `${data.humedad}%`;
+            document.getElementById("soilTempData").innerText = `${data.temp_suelo} °C`;
+            document.getElementById("ambientTempData").innerText = `${data.temp_ambiente} °C`;
+            document.getElementById("lightData").innerText = `${data.luz} lux`;
 
             updateCharts();
         }
