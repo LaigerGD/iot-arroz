@@ -28,8 +28,16 @@ let esp32Data = {
 // ID de la hoja de cálculo de Google Sheets
 const SPREADSHEET_ID = '19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y';
 
-// Leer las credenciales desde el archivo `credentials.json`
-const credentials = JSON.parse(fs.readFileSync(path.join(__dirname, 'credentials.json'), 'utf8'));
+// Leer las credenciales desde el archivo `credentials.json` ubicado en el mismo directorio que este archivo
+const credentialsPath = path.join(__dirname, 'credentials.json');
+
+let credentials;
+try {
+  credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8')); // Leer y parsear el archivo
+} catch (error) {
+  console.error("❌ Error al leer el archivo 'credentials.json': ", error);
+  process.exit(1); // Detener la ejecución si no se puede leer el archivo
+}
 
 // Inicializar Google Spreadsheet
 const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
