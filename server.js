@@ -1,57 +1,30 @@
-// ===============================
-// IMPORTACIONES
-// ===============================
 const express = require("express");
-const path = require("path");
-const bodyParser = require("body-parser");
 const { google } = require("googleapis");
 
-// ===============================
-// CONFIGURACIÓN BÁSICA
-// ===============================
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(express.json());
 
-// ⚠️ ID DE TU GOOGLE SHEET (CONFIRMADO)
-const SPREADSHEET_ID = "19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y";
+// 🔹 ID DE TU GOOGLE SHEET
+const SHEET_ID = "19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y";
 
-// ===============================
-// MIDDLEWARE
-// ===============================
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-// ===============================
-// AUTENTICACIÓN GOOGLE SHEETS
-// ===============================
+// 🔹 AUTENTICACIÓN GOOGLE
 const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
-const sheets = google.sheets({
-  version: "v4",
-  auth,
-});
+const sheets = google.sheets({ version: "v4", auth });
 
-// ===============================
-// RUTA PRINCIPAL (WEB)
-// ===============================
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ===============================
-// API: RECIBIR DATOS (ESP32 / POSTMAN)
-// ===============================
+// 🔹 ENDPOINT PARA RECIBIR DATOS DEL ESP32 / WEB
 app.post("/api/data", async (req, res) => {
   try {
     const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
 
+    console.log("📥 Datos recibidos:", req.body);
+
     const fecha = new Date().toLocaleString("es-PE");
 
     await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: SHEET_ID,
       range: "Hoja 1!A:F",
       valueInputOption: "USER_ENTERED",
       requestBody: {
@@ -62,27 +35,15 @@ app.post("/api/data", async (req, res) => {
     console.log("✅ Datos guardados en Google Sheets");
     res.json({ ok: true });
   } catch (error) {
-    console.error("❌ Error guardando datos:", error);
-    res.status(500).json({ ok: false });
+    console.error("❌ Error al guardar:", error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ===============================
-// API: DATOS PARA LA WEB (SIMULADOS)
-// ===============================
-app.get("/api/data", (req, res) => {
-  res.json({
-    humedad: Math.floor(Math.random() * 20) + 70,
-    temp_suelo: (Math.random() * 5 + 24).toFixed(1),
-    temp_ambiente: (Math.random() * 5 + 28).toFixed(1),
-    luz: Math.floor(Math.random() * 500) + 400,
-    ph: (Math.random() * 1 + 5.8).toFixed(2),
-  });
-});
+// 🔹 SERVIR LA WEB
+app.use(express.static("public"));
 
-// ===============================
-// INICIAR SERVIDOR
-// ===============================
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🚀 Servidor activo en puerto ${PORT}`);
 });
