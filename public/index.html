@@ -2,148 +2,184 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>IoT Agrícola – Arroz</title>
+  <title>Dashboard IoT Agrícola – Arroz</title>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
       background: #f4f6f8;
-      padding: 20px;
     }
 
-    h1 {
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 15px;
       text-align: center;
-      color: #2e7d32;
+      font-size: 22px;
+      font-weight: bold;
     }
 
-    .grid {
+    .charts {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      padding: 20px;
     }
 
     .card {
       background: white;
-      padding: 15px;
-      border-radius: 10px;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .card h3 {
+      text-align: center;
+      font-size: 14px;
+      margin: 5px 0;
+    }
+
+    canvas {
+      height: 140px !important;
+    }
+
+    .valor {
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 6px;
+      color: #2e7d32;
     }
 
     .ia {
-      margin-top: 30px;
+      margin: 20px;
+      padding: 15px;
       background: #e8f5e9;
-      padding: 20px;
-      border-radius: 10px;
-      font-size: 18px;
+      border-left: 5px solid #2e7d32;
+      border-radius: 8px;
+      font-weight: bold;
     }
   </style>
 </head>
 
 <body>
 
-<h1>🌾 Sistema IoT para Replante de Arroz</h1>
+<header>
+  🌱 Sistema IoT Agrícola – Replante de Arroz
+</header>
 
-<div class="grid">
-  <div class="card"><canvas id="humedad"></canvas></div>
-  <div class="card"><canvas id="tempSuelo"></canvas></div>
-  <div class="card"><canvas id="tempAmb"></canvas></div>
-  <div class="card"><canvas id="luz"></canvas></div>
-  <div class="card"><canvas id="ph"></canvas></div>
+<!-- TARJETAS DE GRÁFICOS -->
+<div class="charts">
+
+  <div class="card">
+    <h3>Humedad (%)</h3>
+    <canvas id="gH"></canvas>
+    <div class="valor" id="v-h">-- %</div>
+  </div>
+
+  <div class="card">
+    <h3>Temp. Suelo (°C)</h3>
+    <canvas id="gTS"></canvas>
+    <div class="valor" id="v-ts">-- °C</div>
+  </div>
+
+  <div class="card">
+    <h3>Temp. Ambiente (°C)</h3>
+    <canvas id="gTA"></canvas>
+    <div class="valor" id="v-ta">-- °C</div>
+  </div>
+
+  <div class="card">
+    <h3>Luz</h3>
+    <canvas id="gL"></canvas>
+    <div class="valor" id="v-l">--</div>
+  </div>
+
+  <div class="card">
+    <h3>pH</h3>
+    <canvas id="gPH"></canvas>
+    <div class="valor" id="v-ph">--</div>
+  </div>
+
 </div>
 
-<div class="ia">
-  <strong>🤖 Asistencia Inteligente:</strong>
-  <p id="recomendacion">Analizando datos...</p>
+<!-- ASISTENCIA IA -->
+<div class="ia" id="ia">
+  🤖 Analizando condiciones del cultivo...
 </div>
 
 <script>
-const maxPuntos = 10;
-
-function crearGrafico(id, label, min, max) {
-  return new Chart(document.getElementById(id), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label,
-        data: [],
-        borderWidth: 2,
-        fill: false
-      }]
-    },
-    options: {
-      scales: {
-        y: { min, max }
+  function crearGrafico(id) {
+    return new Chart(document.getElementById(id), {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: '#2e7d32',
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false } }
       }
+    });
+  }
+
+  const gH = crearGrafico("gH");
+  const gTS = crearGrafico("gTS");
+  const gTA = crearGrafico("gTA");
+  const gL = crearGrafico("gL");
+  const gPH = crearGrafico("gPH");
+
+  function push(chart, value) {
+    chart.data.labels.push('');
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.labels.length > 12) {
+      chart.data.labels.shift();
+      chart.data.datasets[0].data.shift();
     }
-  });
-}
-
-// Crear gráficos
-const gHumedad = crearGrafico("humedad", "Humedad (%)", 0, 100);
-const gTempSuelo = crearGrafico("tempSuelo", "Temp. Suelo (°C)", 10, 40);
-const gTempAmb = crearGrafico("tempAmb", "Temp. Ambiente (°C)", 10, 45);
-const gLuz = crearGrafico("luz", "Luz", 0, 1200);
-const gPh = crearGrafico("ph", "pH", 4, 8);
-
-// Simulación de sensores
-function simular() {
-  const humedad = Math.floor(Math.random() * 30) + 60;
-  const tempSuelo = (Math.random() * 10 + 25).toFixed(1);
-  const tempAmb = (Math.random() * 10 + 28).toFixed(1);
-  const luz = Math.floor(Math.random() * 600) + 400;
-  const ph = (Math.random() * 1.5 + 5.5).toFixed(1);
-
-  actualizar(gHumedad, humedad);
-  actualizar(gTempSuelo, tempSuelo);
-  actualizar(gTempAmb, tempAmb);
-  actualizar(gLuz, luz);
-  actualizar(gPh, ph);
-
-  generarRecomendacion(humedad, tempSuelo, ph);
-}
-
-function actualizar(grafico, valor) {
-  const data = grafico.data;
-  data.labels.push("");
-  data.datasets[0].data.push(valor);
-
-  if (data.labels.length > maxPuntos) {
-    data.labels.shift();
-    data.datasets[0].data.shift();
+    chart.update();
   }
 
-  grafico.update();
-}
+  function generarIA(d) {
+    let m = "Condiciones adecuadas para el replante del arroz.";
 
-// 🤖 IA BÁSICA (REGLAS)
-function generarRecomendacion(humedad, tempSuelo, ph) {
-  let texto = "";
+    if (d.humedad < 60) m = "Humedad baja: se recomienda riego.";
+    if (d.temp_suelo < 20) m = "Temperatura del suelo baja para arroz.";
+    if (d.ph < 5.5 || d.ph > 7.5) m = "pH fuera del rango óptimo.";
 
-  if (humedad < 65) {
-    texto += "⚠️ Humedad baja. Mantener suelo saturado para el replante. ";
-  } else {
-    texto += "✅ Humedad adecuada para el arroz. ";
+    document.getElementById("ia").innerText = "🤖 " + m;
   }
 
-  if (tempSuelo < 22) {
-    texto += "⚠️ Temperatura del suelo baja. Retrasar replante. ";
-  } else {
-    texto += "🌱 Temperatura del suelo favorable. ";
+  async function cargar() {
+    const r = await fetch("/api/data");
+    const d = await r.json();
+
+    // Valores debajo de cada gráfico
+    document.getElementById("v-h").innerText = d.humedad + " %";
+    document.getElementById("v-ts").innerText = d.temp_suelo + " °C";
+    document.getElementById("v-ta").innerText = d.temp_ambiente + " °C";
+    document.getElementById("v-l").innerText = d.luz;
+    document.getElementById("v-ph").innerText = d.ph;
+
+    // Gráficos
+    push(gH, d.humedad);
+    push(gTS, d.temp_suelo);
+    push(gTA, d.temp_ambiente);
+    push(gL, d.luz);
+    push(gPH, d.ph);
+
+    generarIA(d);
   }
 
-  if (ph < 5.5 || ph > 7.0) {
-    texto += "⚠️ pH fuera de rango ideal (5.5 – 7.0).";
-  } else {
-    texto += "✅ pH adecuado para el cultivo.";
-  }
-
-  document.getElementById("recomendacion").innerText = texto;
-}
-
-setInterval(simular, 3000);
+  setInterval(cargar, 3000);
 </script>
 
 </body>
