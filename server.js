@@ -1,8 +1,10 @@
-// Importar las dependencias necesarias
+// Importar dependencias necesarias
 const express = require('express');
 const bodyParser = require('body-parser');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 // Crear la aplicación Express
 const app = express();
@@ -26,21 +28,8 @@ let esp32Data = {
 // ID de la hoja de cálculo de Google Sheets
 const SPREADSHEET_ID = '19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y';
 
-// Cargar las credenciales desde la variable de entorno
-const credentialsEnv = process.env.GOOGLE_CREDENTIALS;
-
-if (!credentialsEnv) {
-  console.error("❌ La variable de entorno 'GOOGLE_CREDENTIALS' no está configurada correctamente.");
-  process.exit(1); // Detener la ejecución si no está configurada la variable
-}
-
-let credentials;
-try {
-  credentials = JSON.parse(credentialsEnv); // Intentamos parsear las credenciales
-} catch (error) {
-  console.error("❌ Error al parsear las credenciales de Google Sheets: ", error);
-  process.exit(1); // Detener la ejecución si ocurre un error al parsear
-}
+// Leer las credenciales desde el archivo `credentials.json`
+const credentials = JSON.parse(fs.readFileSync(path.join(__dirname, 'credentials.json'), 'utf8'));
 
 // Inicializar Google Spreadsheet
 const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
