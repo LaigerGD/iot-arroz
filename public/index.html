@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>IoT Arroz – Dashboard Inteligente</title>
+  <title>HMI – Sistema IoT Agrícola Solar</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f2f5f7;
+      background: #eef2f5;
       margin: 0;
       padding: 20px;
     }
@@ -21,41 +21,44 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
       gap: 20px;
     }
 
     .card {
-      background: #fff;
+      background: white;
       padding: 15px;
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      border-radius: 14px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.12);
       text-align: center;
     }
 
     .value {
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 18px;
       font-weight: bold;
     }
 
+    /* ASISTENTE */
     .assistant {
       margin-top: 40px;
-      background: #ffffff;
+      background: white;
       padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
-
-    .assistant h2 {
-      margin-top: 0;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
     }
 
     .estado {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: bold;
+      padding: 10px;
+      border-radius: 10px;
       margin-bottom: 10px;
     }
+
+    .OPTIMO { color: green; }
+    .ATENCION { color: orange; }
+    .DESCONECTADO { color: red; }
 
     ul {
       text-align: left;
@@ -65,7 +68,7 @@
 
 <body>
 
-  <h1>🌾 Sistema IoT Agrícola – Arroz</h1>
+  <h1>🌾 HMI – Sistema IoT Agrícola Solar</h1>
 
   <!-- DASHBOARD -->
   <div class="grid">
@@ -100,19 +103,25 @@
       <div class="value" id="phValue">--</div>
     </div>
 
+    <div class="card">
+      <h3>🔋 Batería (%)</h3>
+      <canvas id="bateriaChart"></canvas>
+      <div class="value" id="bateriaValue">-- %</div>
+    </div>
+
   </div>
 
   <!-- ASISTENTE IA -->
   <div class="assistant">
-    <h2>🤖 Asistente Inteligente del Terreno</h2>
+    <h2>🤖 Asistente Inteligente del Sistema</h2>
     <div class="estado" id="estadoTerreno">Estado: --</div>
     <ul id="mensajesIA"></ul>
     <p id="recomendacionFinal"></p>
   </div>
 
   <script>
-    const createChart = (id, label) => {
-      return new Chart(document.getElementById(id), {
+    const createChart = (id, label) => new Chart(
+      document.getElementById(id), {
         type: "line",
         data: {
           labels: [],
@@ -123,75 +132,71 @@
             tension: 0.4
           }]
         }
-      });
-    };
+      }
+    );
 
     const humedadChart = createChart("humedadChart", "Humedad");
     const tempSueloChart = createChart("tempSueloChart", "Temp Suelo");
     const tempAmbienteChart = createChart("tempAmbienteChart", "Temp Ambiente");
     const luzChart = createChart("luzChart", "Luz");
     const phChart = createChart("phChart", "pH");
+    const bateriaChart = createChart("bateriaChart", "Batería");
 
     async function fetchData() {
-      try {
-        const res = await fetch("/api/data");
-        const data = await res.json();
-        const h = data.history;
+      const res = await fetch("/api/data");
+      const data = await res.json();
+      const h = data.history;
 
-        humedadChart.data.labels = h.labels;
-        humedadChart.data.datasets[0].data = h.humedad;
-        humedadChart.update();
+      humedadChart.data.labels = h.labels;
+      humedadChart.data.datasets[0].data = h.humedad;
+      humedadChart.update();
 
-        tempSueloChart.data.labels = h.labels;
-        tempSueloChart.data.datasets[0].data = h.temp_suelo;
-        tempSueloChart.update();
+      tempSueloChart.data.labels = h.labels;
+      tempSueloChart.data.datasets[0].data = h.temp_suelo;
+      tempSueloChart.update();
 
-        tempAmbienteChart.data.labels = h.labels;
-        tempAmbienteChart.data.datasets[0].data = h.temp_ambiente;
-        tempAmbienteChart.update();
+      tempAmbienteChart.data.labels = h.labels;
+      tempAmbienteChart.data.datasets[0].data = h.temp_ambiente;
+      tempAmbienteChart.update();
 
-        luzChart.data.labels = h.labels;
-        luzChart.data.datasets[0].data = h.luz;
-        luzChart.update();
+      luzChart.data.labels = h.labels;
+      luzChart.data.datasets[0].data = h.luz;
+      luzChart.update();
 
-        phChart.data.labels = h.labels;
-        phChart.data.datasets[0].data = h.ph;
-        phChart.update();
+      phChart.data.labels = h.labels;
+      phChart.data.datasets[0].data = h.ph;
+      phChart.update();
 
-        document.getElementById("humedadValue").textContent = data.humedad + " %";
-        document.getElementById("tempSueloValue").textContent = data.temp_suelo + " °C";
-        document.getElementById("tempAmbienteValue").textContent = data.temp_ambiente + " °C";
-        document.getElementById("luzValue").textContent = data.luz;
-        document.getElementById("phValue").textContent = data.ph;
+      bateriaChart.data.labels = h.labels;
+      bateriaChart.data.datasets[0].data = h.bateria;
+      bateriaChart.update();
 
-      } catch (err) {
-        console.error("Error obteniendo datos:", err);
-      }
+      document.getElementById("humedadValue").textContent = data.humedad + " %";
+      document.getElementById("tempSueloValue").textContent = data.temp_suelo + " °C";
+      document.getElementById("tempAmbienteValue").textContent = data.temp_ambiente + " °C";
+      document.getElementById("luzValue").textContent = data.luz;
+      document.getElementById("phValue").textContent = data.ph;
+      document.getElementById("bateriaValue").textContent = data.bateria + " %";
     }
 
     async function fetchAnalysis() {
-      try {
-        const res = await fetch("/api/analysis");
-        const data = await res.json();
+      const res = await fetch("/api/analysis");
+      const data = await res.json();
 
-        document.getElementById("estadoTerreno").textContent =
-          "Estado: " + data.estado;
+      const estadoDiv = document.getElementById("estadoTerreno");
+      estadoDiv.textContent = "Estado: " + data.estado;
+      estadoDiv.className = "estado " + data.estado.replace("Ó","O");
 
-        const ul = document.getElementById("mensajesIA");
-        ul.innerHTML = "";
+      const ul = document.getElementById("mensajesIA");
+      ul.innerHTML = "";
+      data.mensajes.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = m;
+        ul.appendChild(li);
+      });
 
-        data.mensajes.forEach(m => {
-          const li = document.createElement("li");
-          li.textContent = m;
-          ul.appendChild(li);
-        });
-
-        document.getElementById("recomendacionFinal").textContent =
-          data.recomendacionFinal;
-
-      } catch (err) {
-        console.error("Error análisis IA:", err);
-      }
+      document.getElementById("recomendacionFinal").textContent =
+        data.recomendacionFinal;
     }
 
     setInterval(fetchData, 3000);
