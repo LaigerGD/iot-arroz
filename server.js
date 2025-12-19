@@ -1,46 +1,49 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { GoogleSpreadsheet } = require('google-spreadsheet');
-const cors = require('cors');
+const { google } = require('googleapis');
+const credentials = require('./credentials.json'); // Archivo de credenciales de Google API
 
+// Configuración de Express
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Habilitar CORS
-app.use(cors());
-
-// Middleware para parsear JSON
+const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
-// Conectar a Google Sheets usando las credenciales de la variable de entorno
-const doc = new GoogleSpreadsheet('19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y');
-
-// Conectar a Google Sheets
-async function accessSpreadsheet() {
-  await doc.useServiceAccountAuth(JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT));
-  await doc.loadInfo(); // Carga la información del documento
-  console.log('Hoja cargada correctamente!');
-}
-
-accessSpreadsheet();
-
-// Ruta para recibir datos desde el ESP32
+// Ruta para recibir los datos de los sensores
 app.post('/api/data', async (req, res) => {
-  try {
-    const { humedad, temp_suelo, temp_ambiente, luz, ph } = req.body;
+  const data = req.body;
 
-    // Abrir la hoja y acceder a la hoja de trabajo
-    const sheet = doc.sheetsByIndex[0]; // Suponiendo que estamos usando la primera hoja
-    await sheet.addRow({
-      Fecha: new Date().toLocaleString(),
-      Humedad: humedad,
-      Temp_Suelo: temp_suelo,
-      Temp_Ambiente: temp_ambiente,
-      Luz: luz,
-      pH: ph,
+  // Verifica que los datos contengan los parámetros necesarios
+  if (!data.humedad || !data.temp_suelo || !data.temp_ambiente || !data.luz || !data.ph) {
+    return res.status(400).send('Faltan datos');
+  }
+
+  try {
+    // Autenticación con Google Sheets API
+    const auth = new google.auth.GoogleAuth({
+      keyFile: './credentials.json', // Asegúrate de tener el archivo de credenciales de Google
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
-    console.log('Datos guardados en Google Sheets:', req.body);
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // ID de la hoja de Google Sheets (obténlo desde la URL de la hoja de cálculo)
+    const spreadsheetId = '19TOTCF0SKeN5oSAtdVnAwbbrjXwyaGUV8Y-gBYR8W-Y'; // Tu ID de hoja de cálculo
+
+    // Datos que se van a agregar a la hoja
+    const values = [
+      [new Date().toISOString(), data.humedad, data.temp_suelo, data.temp_ambiente, data.luz, data.ph]
+    ];
+
+    // Llama a la API de Google Sheets para agregar los datos
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Sheet1!A:F', // Asegúrate de que el rango se ajuste a tus columnas
+      valueInputOption: 'RAW',
+      resource: {
+        values,
+      },
+    });
+
     res.status(200).send('Datos guardados correctamente');
   } catch (error) {
     console.error('Error al guardar los datos:', error);
@@ -48,32 +51,7 @@ app.post('/api/data', async (req, res) => {
   }
 });
 
-// Ruta para enviar los datos actuales al frontend
-app.get('/api/data', async (req, res) => {
-  try {
-    const sheet = doc.sheetsByIndex[0];
-    const rows = await sheet.getRows();
-    
-    // Obtener los últimos datos de la hoja
-    const lastRow = rows[rows.length - 1];
-
-    res.json({
-      humedad: lastRow.Humedad,
-      temp_suelo: lastRow.Temp_Suelo,
-      temp_ambiente: lastRow.Temp_Ambiente,
-      luz: lastRow.Luz,
-      ph: lastRow.pH,
-    });
-  } catch (error) {
-    console.error('Error al obtener los datos:', error);
-    res.status(500).send('Error al obtener los datos');
-  }
-});
-
-// Servir los archivos estáticos (HTML, CSS, JS)
-app.use(express.static('public'));
-
-// Iniciar el servidor
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+// Iniciar servidor
+app.listen(port, () => {
+  console.log(`Servidor corriendo en http://localhost:${port}`);
 });
