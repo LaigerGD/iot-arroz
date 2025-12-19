@@ -2,37 +2,198 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>IoT Arroz</title>
+  <title>Dashboard IoT Arroz</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    body { font-family: Arial; padding: 20px; }
-    h1 { color: green; }
-    p { font-size: 18px; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f4f7;
+    }
+
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      height: 200px;
+    }
+
+    .card h3 {
+      text-align: center;
+      margin: 5px 0;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .ia-box {
+      margin-top: 25px;
+      background: #e8f5e9;
+      border-left: 6px solid #2e7d32;
+      padding: 20px;
+      border-radius: 8px;
+    }
+
+    .ia-box h2 {
+      margin-top: 0;
+      color: #2e7d32;
+    }
+
+    .ia-box p {
+      font-size: 17px;
+    }
   </style>
 </head>
+
 <body>
 
-<h1>🌱 IoT Arroz</h1>
+<header>
+  🌾 Sistema IoT Agrícola – Replante de Arroz
+</header>
 
-<p>Humedad: <span id="humedad">-</span>%</p>
-<p>Temp Suelo: <span id="temp_suelo">-</span>°C</p>
-<p>Temp Ambiente: <span id="temp_ambiente">-</span>°C</p>
-<p>Luz: <span id="luz">-</span></p>
-<p>pH: <span id="ph">-</span></p>
+<div class="container">
+
+  <!-- 🔹 GRÁFICOS PEQUEÑOS -->
+  <div class="grid">
+    <div class="card">
+      <h3>Humedad (%)</h3>
+      <canvas id="humedad"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Temp. Suelo (°C)</h3>
+      <canvas id="tempSuelo"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Temp. Ambiente (°C)</h3>
+      <canvas id="tempAmb"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Luz</h3>
+      <canvas id="luz"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>pH del Suelo</h3>
+      <canvas id="ph"></canvas>
+    </div>
+  </div>
+
+  <!-- 🤖 ASISTENCIA IA -->
+  <div class="ia-box">
+    <h2>🤖 Asistencia Inteligente</h2>
+    <p id="recomendacion">Analizando condiciones del cultivo...</p>
+  </div>
+
+</div>
 
 <script>
-async function cargarDatos() {
-  const res = await fetch("/api/data");
-  const data = await res.json();
+const maxPuntos = 8;
 
-  if (!data.humedad) return;
-
-  document.getElementById("humedad").innerText = data.humedad;
-  document.getElementById("temp_suelo").innerText = data.temp_suelo;
-  document.getElementById("temp_ambiente").innerText = data.temp_ambiente;
-  document.getElementById("luz").innerText = data.luz;
-  document.getElementById("ph").innerText = data.ph;
+// Crear gráfico pequeño
+function crearGrafico(id, min, max) {
+  return new Chart(document.getElementById(id), {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { min, max }
+      }
+    }
+  });
 }
 
+// Inicializar gráficos
+const gH = crearGrafico("humedad", 0, 100);
+const gTS = crearGrafico("tempSuelo", 10, 40);
+const gTA = crearGrafico("tempAmb", 10, 45);
+const gL = crearGrafico("luz", 0, 1200);
+const gPH = crearGrafico("ph", 4, 8);
+
+// Actualizar gráfico
+function pushData(g, v) {
+  g.data.labels.push("");
+  g.data.datasets[0].data.push(v);
+
+  if (g.data.labels.length > maxPuntos) {
+    g.data.labels.shift();
+    g.data.datasets[0].data.shift();
+  }
+  g.update();
+}
+
+// Obtener datos del servidor
+async function cargarDatos() {
+  const res = await fetch("/api/data");
+  const d = await res.json();
+
+  pushData(gH, d.humedad);
+  pushData(gTS, d.temp_suelo);
+  pushData(gTA, d.temp_ambiente);
+  pushData(gL, d.luz);
+  pushData(gPH, d.ph);
+
+  generarIA(d);
+}
+
+// 🤖 IA BASADA EN REGLAS (por ahora)
+function generarIA(d) {
+  let msg = "";
+
+  if (d.humedad < 65)
+    msg += "⚠️ Humedad baja. Mantener suelo saturado. ";
+  else
+    msg += "✅ Humedad adecuada para el replante. ";
+
+  if (d.temp_suelo < 22)
+    msg += "⚠️ Temperatura del suelo baja. ";
+  else
+    msg += "🌱 Temperatura del suelo favorable. ";
+
+  if (d.ph < 5.5 || d.ph > 7)
+    msg += "⚠️ pH fuera del rango ideal (5.5–7).";
+  else
+    msg += "✅ pH óptimo para el arroz.";
+
+  document.getElementById("recomendacion").innerText = msg;
+}
+
+// Actualizar cada 3 segundos
 setInterval(cargarDatos, 3000);
 </script>
 
