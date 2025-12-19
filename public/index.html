@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard IoT Arroz</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .card h3 {
+      margin: 0 0 10px 0;
+      text-align: center;
+    }
+
+    .value {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    canvas {
+      max-height: 150px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌾 Dashboard IoT – Arroz</h1>
+
+  <div class="grid">
+
+    <div class="card">
+      <h3>Humedad (%)</h3>
+      <canvas id="humedadChart"></canvas>
+      <div class="value" id="humedadValue">--</div>
+    </div>
+
+    <div class="card">
+      <h3>Temp. Suelo (°C)</h3>
+      <canvas id="tempSueloChart"></canvas>
+      <div class="value" id="tempSueloValue">--</div>
+    </div>
+
+    <div class="card">
+      <h3>Temp. Ambiente (°C)</h3>
+      <canvas id="tempAmbienteChart"></canvas>
+      <div class="value" id="tempAmbienteValue">--</div>
+    </div>
+
+    <div class="card">
+      <h3>Luz</h3>
+      <canvas id="luzChart"></canvas>
+      <div class="value" id="luzValue">--</div>
+    </div>
+
+    <div class="card">
+      <h3>pH</h3>
+      <canvas id="phChart"></canvas>
+      <div class="value" id="phValue">--</div>
+    </div>
+
+  </div>
+
+<script>
+  const SERVER_URL = "https://iot-arroz.onrender.com/api/data";
+
+  const history = {
+    humedad: [],
+    temp_suelo: [],
+    temp_ambiente: [],
+    luz: [],
+    ph: []
+  };
+
+  const labels = [];
+
+  function createChart(ctx, label) {
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: label,
+          data: [],
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false }
+        }
+      }
+    });
+  }
+
+  const humedadChart = createChart(document.getElementById('humedadChart'), 'Humedad');
+  const tempSueloChart = createChart(document.getElementById('tempSueloChart'), 'Temp Suelo');
+  const tempAmbienteChart = createChart(document.getElementById('tempAmbienteChart'), 'Temp Ambiente');
+  const luzChart = createChart(document.getElementById('luzChart'), 'Luz');
+  const phChart = createChart(document.getElementById('phChart'), 'pH');
+
+  async function fetchData() {
+    try {
+      const res = await fetch(SERVER_URL);
+      const data = await res.json();
+
+      if (!data || data.humedad === null) return;
+
+      const time = new Date(data.fecha).toLocaleTimeString();
+      labels.push(time);
+      if (labels.length > 10) labels.shift();
+
+      history.humedad.push(data.humedad);
+      history.temp_suelo.push(data.temp_suelo);
+      history.temp_ambiente.push(data.temp_ambiente);
+      history.luz.push(data.luz);
+      history.ph.push(data.ph);
+
+      Object.keys(history).forEach(k => {
+        if (history[k].length > 10) history[k].shift();
+      });
+
+      humedadChart.data.labels = labels;
+      humedadChart.data.datasets[0].data = history.humedad;
+      humedadChart.update();
+
+      tempSueloChart.data.labels = labels;
+      tempSueloChart.data.datasets[0].data = history.temp_suelo;
+      tempSueloChart.update();
+
+      tempAmbienteChart.data.labels = labels;
+      tempAmbienteChart.data.datasets[0].data = history.temp_ambiente;
+      tempAmbienteChart.update();
+
+      luzChart.data.labels = labels;
+      luzChart.data.datasets[0].data = history.luz;
+      luzChart.update();
+
+      phChart.data.labels = labels;
+      phChart.data.datasets[0].data = history.ph;
+      phChart.update();
+
+      document.getElementById('humedadValue').textContent = data.humedad + " %";
+      document.getElementById('tempSueloValue').textContent = data.temp_suelo + " °C";
+      document.getElementById('tempAmbienteValue').textContent = data.temp_ambiente + " °C";
+      document.getElementById('luzValue').textContent = data.luz;
+      document.getElementById('phValue').textContent = data.ph;
+
+    } catch (error) {
+      console.error('Error al obtener datos', error);
+    }
+  }
+
+  setInterval(fetchData, 3000);
+</script>
+
+</body>
+</html>

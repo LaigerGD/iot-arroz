@@ -1,0 +1,28 @@
+{
+  "name": "iot-arroz-server",
+  "version": "1.0.0",
+  "description": "Servidor IoT para monitoreo de cultivo de arroz (ESP32 + Render + Google Sheets)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.x"
+  },
+  "keywords": [
+    "iot",
+    "esp32",
+    "agricultura",
+    "arroz",
+    "render",
+    "google-sheets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
