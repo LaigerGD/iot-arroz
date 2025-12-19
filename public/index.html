@@ -2,101 +2,137 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Sistema IoT Agrícola – Arroz</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard IoT – Replante de Arroz</title>
+
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f6f8;
       margin: 0;
-      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
     }
+
     header {
-      background-color: #2e7d32;
+      background: #2e7d32;
       color: white;
+      padding: 16px;
       text-align: center;
-      padding: 20px;
-      font-size: 24px;
-    }
-    .data-container {
-      padding: 20px;
-      display: flex;
-      justify-content: space-around;
-    }
-    .data-box {
-      background-color: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-      width: 200px;
-      text-align: center;
-    }
-    .data-box h3 {
-      font-size: 18px;
-      margin-bottom: 10px;
-    }
-    .data-box p {
-      font-size: 16px;
+      font-size: 22px;
       font-weight: bold;
+    }
+
+    .container {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: #555;
+    }
+
+    .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #2e7d32;
+    }
+
+    .status {
+      margin: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 10px;
     }
   </style>
 </head>
+
 <body>
 
 <header>
   🌱 Sistema IoT Agrícola – Replante de Arroz
 </header>
 
-<div class="data-container">
-  <div class="data-box">
-    <h3>Humedad</h3>
-    <p id="humedad">-- %</p>
+<div class="container">
+  <div class="card">
+    <h3>Humedad (%)</h3>
+    <div class="value" id="humedad">--</div>
   </div>
-  <div class="data-box">
+
+  <div class="card">
     <h3>Temp. Suelo (°C)</h3>
-    <p id="temp-suelo">-- °C</p>
+    <div class="value" id="temp_suelo">--</div>
   </div>
-  <div class="data-box">
+
+  <div class="card">
     <h3>Temp. Ambiente (°C)</h3>
-    <p id="temp-ambiente">-- °C</p>
+    <div class="value" id="temp_ambiente">--</div>
+  </div>
+
+  <div class="card">
+    <h3>Luz</h3>
+    <div class="value" id="luz">--</div>
+  </div>
+
+  <div class="card">
+    <h3>pH</h3>
+    <div class="value" id="ph">--</div>
   </div>
 </div>
 
-<div class="data-container">
-  <div class="data-box">
-    <h3>Luz</h3>
-    <p id="luz">--</p>
-  </div>
-  <div class="data-box">
-    <h3>pH</h3>
-    <p id="ph">--</p>
-  </div>
+<div class="status" id="estado">
+  ⏳ Esperando datos del servidor...
 </div>
+
+<footer>
+  IoT Arroz © 2025
+</footer>
 
 <script>
-  // Función para cargar los datos del ESP32 desde el servidor
-  async function cargarDatos() {
-    try {
-      const response = await fetch("http://localhost:3000/api/data"); // Cambia esto por la URL de tu servidor en Render
-      const data = await response.json();
+async function obtenerDatos() {
+  try {
+    const res = await fetch('/datos');
+    if (!res.ok) throw new Error('Servidor no responde');
 
-      // Mostrar los datos en los elementos correspondientes
-      document.getElementById("humedad").innerText = `${data.humedad} %`;
-      document.getElementById("temp-suelo").innerText = `${data.temp_suelo} °C`;
-      document.getElementById("temp-ambiente").innerText = `${data.temp_ambiente} °C`;
-      document.getElementById("luz").innerText = data.luz;
-      document.getElementById("ph").innerText = data.ph;
-    } catch (error) {
-      console.error("Error al obtener los datos:", error);
-      alert("Error al conectarse al servidor.");
-    }
+    const data = await res.json();
+
+    document.getElementById('humedad').textContent = data.humedad ?? '--';
+    document.getElementById('temp_suelo').textContent = data.temp_suelo ?? '--';
+    document.getElementById('temp_ambiente').textContent = data.temp_ambiente ?? '--';
+    document.getElementById('luz').textContent = data.luz ?? '--';
+    document.getElementById('ph').textContent = data.ph ?? '--';
+
+    document.getElementById('estado').textContent =
+      '✅ Datos actualizados: ' + new Date().toLocaleTimeString();
+
+  } catch (err) {
+    document.getElementById('estado').textContent =
+      '⚠️ Sin conexión con el servidor';
   }
+}
 
-  // Llamar a la función de carga de datos cada 5 segundos
-  setInterval(cargarDatos, 5000);
-  
-  // Cargar los datos cuando se cargue la página
-  cargarDatos();
+setInterval(obtenerDatos, 5000);
+obtenerDatos();
 </script>
 
 </body>
