@@ -2,10 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard IoT Agrícola – Arroz</title>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Sistema IoT Agrícola – Arroz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
@@ -17,51 +15,54 @@
     header {
       background: #2e7d32;
       color: white;
-      padding: 15px;
+      padding: 16px;
       text-align: center;
       font-size: 22px;
       font-weight: bold;
     }
 
-    .charts {
+    .container {
+      padding: 20px;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 15px;
-      padding: 20px;
+      gap: 16px;
     }
 
     .card {
       background: white;
-      border-radius: 12px;
-      padding: 10px;
+      border-radius: 10px;
+      padding: 16px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: center;
     }
 
     .card h3 {
-      text-align: center;
-      font-size: 14px;
-      margin: 5px 0;
-    }
-
-    canvas {
-      height: 140px !important;
-    }
-
-    .valor {
-      text-align: center;
+      margin: 0 0 10px;
       font-size: 16px;
+      color: #555;
+    }
+
+    .value {
+      font-size: 28px;
       font-weight: bold;
-      margin-top: 6px;
       color: #2e7d32;
     }
 
-    .ia {
+    .status {
       margin: 20px;
-      padding: 15px;
-      background: #e8f5e9;
-      border-left: 5px solid #2e7d32;
+      padding: 12px;
       border-radius: 8px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      text-align: center;
       font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -72,114 +73,66 @@
   🌱 Sistema IoT Agrícola – Replante de Arroz
 </header>
 
-<!-- TARJETAS DE GRÁFICOS -->
-<div class="charts">
-
+<div class="container">
   <div class="card">
     <h3>Humedad (%)</h3>
-    <canvas id="gH"></canvas>
-    <div class="valor" id="v-h">-- %</div>
+    <div class="value" id="humedad">--</div>
   </div>
 
   <div class="card">
     <h3>Temp. Suelo (°C)</h3>
-    <canvas id="gTS"></canvas>
-    <div class="valor" id="v-ts">-- °C</div>
+    <div class="value" id="temp_suelo">--</div>
   </div>
 
   <div class="card">
     <h3>Temp. Ambiente (°C)</h3>
-    <canvas id="gTA"></canvas>
-    <div class="valor" id="v-ta">-- °C</div>
+    <div class="value" id="temp_ambiente">--</div>
   </div>
 
   <div class="card">
     <h3>Luz</h3>
-    <canvas id="gL"></canvas>
-    <div class="valor" id="v-l">--</div>
+    <div class="value" id="luz">--</div>
   </div>
 
   <div class="card">
     <h3>pH</h3>
-    <canvas id="gPH"></canvas>
-    <div class="valor" id="v-ph">--</div>
+    <div class="value" id="ph">--</div>
   </div>
-
 </div>
 
-<!-- ASISTENCIA IA -->
-<div class="ia" id="ia">
-  🤖 Analizando condiciones del cultivo...
+<div class="status" id="estado">
+  ⏳ Esperando datos del servidor...
 </div>
+
+<footer>
+  IoT Arroz © 2025
+</footer>
 
 <script>
-  function crearGrafico(id) {
-    return new Chart(document.getElementById(id), {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          data: [],
-          borderColor: '#2e7d32',
-          tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { x: { display: false } }
-      }
-    });
+async function obtenerDatos() {
+  try {
+    const res = await fetch('/datos');
+    if (!res.ok) throw new Error('Servidor no responde');
+
+    const data = await res.json();
+
+    document.getElementById('humedad').textContent = data.humedad ?? '--';
+    document.getElementById('temp_suelo').textContent = data.temp_suelo ?? '--';
+    document.getElementById('temp_ambiente').textContent = data.temp_ambiente ?? '--';
+    document.getElementById('luz').textContent = data.luz ?? '--';
+    document.getElementById('ph').textContent = data.ph ?? '--';
+
+    document.getElementById('estado').textContent =
+      '✅ Datos actualizados: ' + new Date().toLocaleTimeString();
+
+  } catch (err) {
+    document.getElementById('estado').textContent =
+      '⚠️ Sin conexión con el servidor';
   }
+}
 
-  const gH = crearGrafico("gH");
-  const gTS = crearGrafico("gTS");
-  const gTA = crearGrafico("gTA");
-  const gL = crearGrafico("gL");
-  const gPH = crearGrafico("gPH");
-
-  function push(chart, value) {
-    chart.data.labels.push('');
-    chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > 12) {
-      chart.data.labels.shift();
-      chart.data.datasets[0].data.shift();
-    }
-    chart.update();
-  }
-
-  function generarIA(d) {
-    let m = "Condiciones adecuadas para el replante del arroz.";
-
-    if (d.humedad < 60) m = "Humedad baja: se recomienda riego.";
-    if (d.temp_suelo < 20) m = "Temperatura del suelo baja para arroz.";
-    if (d.ph < 5.5 || d.ph > 7.5) m = "pH fuera del rango óptimo.";
-
-    document.getElementById("ia").innerText = "🤖 " + m;
-  }
-
-  async function cargar() {
-    const r = await fetch("/api/data");
-    const d = await r.json();
-
-    // Valores debajo de cada gráfico
-    document.getElementById("v-h").innerText = d.humedad + " %";
-    document.getElementById("v-ts").innerText = d.temp_suelo + " °C";
-    document.getElementById("v-ta").innerText = d.temp_ambiente + " °C";
-    document.getElementById("v-l").innerText = d.luz;
-    document.getElementById("v-ph").innerText = d.ph;
-
-    // Gráficos
-    push(gH, d.humedad);
-    push(gTS, d.temp_suelo);
-    push(gTA, d.temp_ambiente);
-    push(gL, d.luz);
-    push(gPH, d.ph);
-
-    generarIA(d);
-  }
-
-  setInterval(cargar, 3000);
+setInterval(obtenerDatos, 5000);
+obtenerDatos();
 </script>
 
 </body>
