@@ -11,7 +11,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const MAX_POINTS = 20;
 
-// 👉 TU URL DE APPS SCRIPT (EXCEL)
+// 👉 TU URL DE APPS SCRIPT (GOOGLE SHEETS)
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXmVGl8Dg37m6203GUNbkqesn9GcVzV8uU4rHQe8cX6Cs4ijrA1NdU0c_24CGWN0tR/exec';
 
 // ================= DATA =================
@@ -21,7 +21,6 @@ let history = {
   temp_suelo: [],
   temp_ambiente: [],
   luz: [],
-  ph: [],
   bateria: []
 };
 
@@ -41,21 +40,21 @@ function pushLabel() {
 
 // ================= ESP32 → SERVER =================
 app.post('/api/data', async (req, res) => {
+
   const data = {
     humedad: req.body.humedad || 0,
     temp_suelo: req.body.temp_suelo || 0,
     temp_ambiente: req.body.temp_ambiente || 0,
     luz: req.body.luz || 0,
-    ph: req.body.ph || 0,
     bateria: req.body.bateria || 0
   };
 
   pushLabel();
+
   push(history.humedad, data.humedad);
   push(history.temp_suelo, data.temp_suelo);
   push(history.temp_ambiente, data.temp_ambiente);
   push(history.luz, data.luz);
-  push(history.ph, data.ph);
   push(history.bateria, data.bateria);
 
   lastDataTime = Date.now();
@@ -64,14 +63,16 @@ app.post('/api/data', async (req, res) => {
   try {
     await axios.post(GOOGLE_SCRIPT_URL, data);
   } catch (err) {
-    console.error('Error enviando a Excel:', err.message);
+    console.error('Error enviando a Google Sheets:', err.message);
   }
 
   res.json({ ok: true });
+
 });
 
 // ================= WEB → SERVER =================
 app.get('/api/data', (req, res) => {
+
   const status =
     lastDataTime && Date.now() - lastDataTime < 10000
       ? 'ESP32 CONECTADO'
@@ -86,11 +87,11 @@ app.get('/api/data', (req, res) => {
       temp_suelo: history.temp_suelo[i] || 0,
       temp_ambiente: history.temp_ambiente[i] || 0,
       luz: history.luz[i] || 0,
-      ph: history.ph[i] || 0,
       bateria: history.bateria[i] || 0
     },
     history
   });
+
 });
 
 // ================= STATIC =================
