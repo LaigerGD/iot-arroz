@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema IoT Agrícola – Cultivo de Arroz</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f4;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    header img {
+      height: 140px;
+      width: auto;
+      background: white;
+      padding: 6px;
+      border-radius: 8px;
+    }
+
+    header h1 {
+      font-size: 22px;
+      margin: 0;
+    }
+
+    /* ===== STATUS ===== */
+    .status {
+      background: #c8e6c9;
+      color: #1b5e20;
+      text-align: center;
+      padding: 8px;
+      font-weight: bold;
+      margin: 10px;
+      border-radius: 6px;
+    }
+
+    /* ===== DASHBOARD ===== */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      padding: 15px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .value {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    /* ===== AI ===== */
+    .ai-box {
+      background: #e3f2fd;
+      margin: 15px;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 6px solid #1976d2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header>
+    <img src="logo.png" alt="Institución">
+    <h1>Sistema IoT Agrícola – Cultivo de Arroz</h1>
+  </header>
+
+  <!-- ===== STATUS ===== -->
+  <div class="status" id="status">CONECTANDO...</div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="dashboard">
+
+    <div class="card">
+      <h3>Humedad</h3>
+      <canvas id="humedadChart"></canvas>
+      <div class="value" id="humedadValue">-- %</div>
+    </div>
+
+    <div class="card">
+      <h3>Temp. Suelo</h3>
+      <canvas id="tempSueloChart"></canvas>
+      <div class="value" id="tempSueloValue">-- °C</div>
+    </div>
+
+    <div class="card">
+      <h3>Temp. Ambiente</h3>
+      <canvas id="tempAmbienteChart"></canvas>
+      <div class="value" id="tempAmbienteValue">-- °C</div>
+    </div>
+
+    <div class="card">
+      <h3>Luz</h3>
+      <canvas id="luzChart"></canvas>
+      <div class="value" id="luzValue">--</div>
+    </div>
+
+    <div class="card">
+      <h3>Batería</h3>
+      <canvas id="bateriaChart"></canvas>
+      <div class="value" id="bateriaValue">-- %</div>
+    </div>
+
+  </div>
+
+  <!-- ===== AI ===== -->
+  <div class="ai-box">
+    <h3>🤖 Asistente IA</h3>
+    <p id="aiText">Esperando datos...</p>
+  </div>
+
+<script>
+
+let charts = {};
+
+function createChart(id, label) {
+  const ctx = document.getElementById(id);
+
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true
+    }
+  });
+}
+
+// ===== CREAR GRÁFICOS =====
+charts.humedad = createChart('humedadChart', 'Humedad %');
+charts.temp_suelo = createChart('tempSueloChart', 'Temp Suelo °C');
+charts.temp_ambiente = createChart('tempAmbienteChart', 'Temp Ambiente °C');
+charts.luz = createChart('luzChart', 'Luz');
+charts.bateria = createChart('bateriaChart', 'Batería %');
+
+// ===== OBTENER DATOS =====
+async function fetchData() {
+
+  try {
+
+    const res = await fetch('/api/data');
+    const data = await res.json();
+
+    document.getElementById('status').textContent = data.status;
+
+    for (let key in charts) {
+
+      charts[key].data.labels = data.history.labels;
+      charts[key].data.datasets[0].data = data.history[key];
+      charts[key].update();
+
+    }
+
+    const l = data.latest;
+
+    document.getElementById('humedadValue').textContent =
+      l.humedad + ' %';
+
+    document.getElementById('tempSueloValue').textContent =
+      l.temp_suelo + ' °C';
+
+    document.getElementById('tempAmbienteValue').textContent =
+      l.temp_ambiente + ' °C';
+
+    document.getElementById('luzValue').textContent =
+      l.luz;
+
+    document.getElementById('bateriaValue').textContent =
+      l.bateria + ' %';
+
+    document.getElementById('aiText').textContent =
+      data.status.includes('DESCONECTADO')
+      ? '⚠️ Controlador ESP32 desconectado.'
+      : '✅ Condiciones óptimas para el cultivo.';
+
+  } catch (error) {
+
+    document.getElementById('status').textContent =
+      'ERROR DE CONEXIÓN';
+
+    document.getElementById('aiText').textContent =
+      '⚠️ No se pudo conectar con el servidor.';
+
+    console.error(error);
+
+  }
+
+}
+
+// ===== ACTUALIZACIÓN AUTOMÁTICA =====
+setInterval(fetchData, 3000);
+fetchData();
+
+</script>
+
+</body>
+</html>
